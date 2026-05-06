@@ -431,17 +431,38 @@ async function handleEditHabit(e) {
 
 function confirmDeleteHabit() {
     const id = document.getElementById('editHabitModal').dataset.habitId;
+    const h = habits.find(x => x.id === id);
+    if (!h) return;
+
+    // Check if habit is at least 7 days old
+    const created = h.created_at ? new Date(h.created_at) : new Date(parseInt(h.id.split('_')[1]));
+    const now = new Date();
+    const diffDays = Math.ceil((now - created) / (1000 * 60 * 60 * 24));
+    const isLocked = diffDays <= 7;
+
     closeModal('editHabitModal');
-    document.getElementById('deleteTitle').textContent = 'Delete Habit?';
-    document.getElementById('deleteDesc').textContent = 'This will remove the habit and all its sessions permanently.';
+    
+    const titleEl = document.getElementById('deleteTitle');
+    const descEl = document.getElementById('deleteDesc');
+    const confirmBtn = document.getElementById('confirmDeleteBtn');
+
+    if (isLocked) {
+        titleEl.textContent = '🔒 Habit Locked';
+        descEl.innerHTML = `To build consistency, you cannot delete a habit in its first 7 days.<br><br><strong>${8 - diffDays} days remaining</strong> until you can remove this.`;
+        confirmBtn.style.display = 'none';
+    } else {
+        titleEl.textContent = 'Delete Habit?';
+        descEl.textContent = 'This will remove the habit and all its sessions permanently.';
+        confirmBtn.style.display = 'block';
+        confirmBtn.onclick = async () => {
+            await sbClient.from('habits').delete().eq('id', id);
+            await loadData();
+            activeHabit = habits.length ? habits[0].id : null;
+            closeModal('deleteModal'); renderSidebar();
+            if (activeHabit) renderMain(); else renderWelcome();
+        };
+    }
     openModal('deleteModal');
-    document.getElementById('confirmDeleteBtn').onclick = async () => {
-        await sbClient.from('habits').delete().eq('id', id);
-        await loadData();
-        activeHabit = habits.length ? habits[0].id : null;
-        closeModal('deleteModal'); renderSidebar();
-        if (activeHabit) renderMain(); else renderWelcome();
-    };
 }
 
 // ── Log Session ────────────────────────────────────────
@@ -509,8 +530,10 @@ function openMedia(sessionId) {
 function confirmDeleteSession(id) {
     document.getElementById('deleteTitle').textContent = 'Delete Session?';
     document.getElementById('deleteDesc').textContent = 'This cannot be undone.';
+    const confirmBtn = document.getElementById('confirmDeleteBtn');
+    confirmBtn.style.display = 'block';
     openModal('deleteModal');
-    document.getElementById('confirmDeleteBtn').onclick = async () => {
+    confirmBtn.onclick = async () => {
         await sbClient.from('sessions').delete().eq('id', id);
         await loadData(); closeModal('deleteModal'); renderSidebar(); renderMain();
     };
