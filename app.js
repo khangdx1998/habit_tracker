@@ -1,7 +1,9 @@
 // ── Track Pro — Cloud Dashboard (Powered by Supabase) ─────────────────────
 const SB_URL = 'REMOVED_URL';
 const SB_KEY = 'REMOVED_KEY';
-const supabase = supabase.createClient(SB_URL, SB_KEY);
+
+// The global 'supabase' object comes from the CDN script
+const sbClient = supabase.createClient(SB_URL, SB_KEY);
 
 let habits = [], sessions = [];
 let activeHabit = null, currentYear = new Date().getFullYear();
@@ -11,8 +13,8 @@ let showAllSessions = false;
 // ── Persistence (Cloud) ──────────────────────────────────
 const loadData = async () => {
     try {
-        const { data: hData, error: hErr } = await supabase.from('habits').select('*');
-        const { data: sData, error: sErr } = await supabase.from('sessions').select('*');
+        const { data: hData, error: hErr } = await sbClient.from('habits').select('*');
+        const { data: sData, error: sErr } = await sbClient.from('sessions').select('*');
         
         if (hErr || sErr) throw hErr || sErr;
 
@@ -27,13 +29,13 @@ const loadData = async () => {
             const localSessions = JSON.parse(localStorage.getItem('tp_sessions') || '[]');
             
             // Push habits
-            await supabase.from('habits').insert(localHabits);
+            await sbClient.from('habits').insert(localHabits);
             // Push sessions (mapping habitId -> habit_id)
             const mappedSessions = localSessions.map(s => {
                 const { habitId, ...rest } = s;
                 return { ...rest, habit_id: habitId };
             });
-            await supabase.from('sessions').insert(mappedSessions);
+            await sbClient.from('sessions').insert(mappedSessions);
             
             // Reload
             return loadData();
@@ -375,7 +377,7 @@ async function handleAddHabit(e) {
     const color = document.querySelector('#colorPicker .color-opt.selected')?.dataset.color || '#22c55e';
     if (!name) return;
     const id = 'h_' + Date.now();
-    await supabase.from('habits').insert({ id, name, icon, unit, color });
+    await sbClient.from('habits').insert({ id, name, icon, unit, color });
     await loadData(); activeHabit = id; closeModal('addHabitModal'); renderSidebar(); renderMain();
 }
 
@@ -398,7 +400,7 @@ async function handleEditHabit(e) {
     const icon = document.getElementById('editHabitIcon').value.trim();
     const unit = document.getElementById('editHabitUnit').value.trim();
     const color = document.querySelector('#editColorPicker .color-opt.selected')?.dataset.color;
-    await supabase.from('habits').update({ name, icon, unit, color }).eq('id', id);
+    await sbClient.from('habits').update({ name, icon, unit, color }).eq('id', id);
     await loadData(); closeModal('editHabitModal'); renderSidebar(); renderMain();
 }
 
@@ -409,7 +411,7 @@ function confirmDeleteHabit() {
     document.getElementById('deleteDesc').textContent = 'This will remove the habit and all its sessions permanently.';
     openModal('deleteModal');
     document.getElementById('confirmDeleteBtn').onclick = async () => {
-        await supabase.from('habits').delete().eq('id', id);
+        await sbClient.from('habits').delete().eq('id', id);
         await loadData();
         activeHabit = habits.length ? habits[0].id : null;
         closeModal('deleteModal'); renderSidebar();
@@ -449,14 +451,14 @@ async function handleLogSubmit(e) {
         const file = fileInput.files[0];
         const ext = file.name.split('.').pop();
         const fileName = `${Date.now()}.${ext}`;
-        const { data, error } = await supabase.storage.from('evidence').upload(fileName, file);
+        const { data, error } = await sbClient.storage.from('evidence').upload(fileName, file);
         if (error) { alert('Upload error: ' + error.message); submitBtn.disabled = false; return; }
-        const { data: { publicUrl } } = supabase.storage.from('evidence').getPublicUrl(fileName);
+        const { data: { publicUrl } } = sbClient.storage.from('evidence').getPublicUrl(fileName);
         mediaUrl = publicUrl;
     }
 
     const id = 's_'+Date.now();
-    await supabase.from('sessions').insert({ id, habit_id: activeHabit, date, value: value ? parseFloat(value) : null, notes, media: mediaUrl, time: new Date().toTimeString().substring(0,5) });
+    await sbClient.from('sessions').insert({ id, habit_id: activeHabit, date, value: value ? parseFloat(value) : null, notes, media: mediaUrl, time: new Date().toTimeString().substring(0,5) });
     await loadData(); 
     submitBtn.disabled = false;
     closeModal('logModal'); renderSidebar(); renderMain();
@@ -484,7 +486,7 @@ function confirmDeleteSession(id) {
     document.getElementById('deleteDesc').textContent = 'This cannot be undone.';
     openModal('deleteModal');
     document.getElementById('confirmDeleteBtn').onclick = async () => {
-        await supabase.from('sessions').delete().eq('id', id);
+        await sbClient.from('sessions').delete().eq('id', id);
         await loadData(); closeModal('deleteModal'); renderSidebar(); renderMain();
     };
 }
