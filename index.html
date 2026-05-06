@@ -189,6 +189,14 @@
                     <label for="editLogNotes">Notes</label>
                     <textarea id="editLogNotes" rows="3" placeholder="How did it go?"></textarea>
                 </div>
+                <div class="form-group">
+                    <label>Evidence (Replace Photo/Video)</label>
+                    <div id="editMediaPreview" style="margin-bottom:0.6rem;"></div>
+                    <div class="file-upload-wrapper">
+                        <input type="file" id="editLogFile" accept="image/*,video/*" class="file-input">
+                        <div id="editUploadStatus" style="font-size:0.7rem;margin-top:0.3rem;color:var(--dim)"></div>
+                    </div>
+                </div>
                 <div class="form-actions">
                     <button type="button" class="btn btn-ghost" onclick="closeModal('editSessionModal')">Cancel</button>
                     <button type="submit" class="btn btn-primary" id="saveEditSessionBtn">Save Changes</button>

@@ -571,8 +571,31 @@ function openEditSession(id) {
     document.getElementById('editLogValue').value = s.value || '';
     document.getElementById('editLogNotes').value = s.notes || '';
     document.getElementById('editLogUnitHint').textContent = h.unit ? `(${h.unit})` : '';
+    document.getElementById('editLogFile').value = '';
+    document.getElementById('editUploadStatus').textContent = '';
+
+    const preview = document.getElementById('editMediaPreview');
+    if (s.media) {
+        const isVid = s.media.toLowerCase().match(/\.(mp4|mov|webm)$/);
+        preview.innerHTML = `
+            <div style="position:relative; display:inline-block">
+                ${isVid ? `<video src="${s.media}" style="height:60px; border-radius:4px"></video>` : `<img src="${s.media}" style="height:60px; border-radius:4px">`}
+                <button type="button" onclick="removeEditMedia()" style="position:absolute; top:-5px; right:-5px; background:var(--red); color:white; border:none; border-radius:50%; width:18px; height:18px; font-size:10px; cursor:pointer">✕</button>
+            </div>
+        `;
+        preview.dataset.currentMedia = s.media;
+    } else {
+        preview.innerHTML = '';
+        preview.dataset.currentMedia = '';
+    }
     
     openModal('editSessionModal');
+}
+
+function removeEditMedia() {
+    const preview = document.getElementById('editMediaPreview');
+    preview.innerHTML = '';
+    preview.dataset.currentMedia = '';
 }
 
 async function handleEditSession(e) {
@@ -581,8 +604,23 @@ async function handleEditSession(e) {
     const date = document.getElementById('editLogDate').value;
     const value = document.getElementById('editLogValue').value;
     const notes = document.getElementById('editLogNotes').value.trim();
+    const fileInput = document.getElementById('editLogFile');
+    const preview = document.getElementById('editMediaPreview');
+    let mediaUrl = preview.dataset.currentMedia;
 
     if (!date) return;
+
+    const submitBtn = document.getElementById('saveEditSessionBtn');
+    submitBtn.disabled = true;
+    document.getElementById('editUploadStatus').textContent = fileInput.files.length ? 'Uploading new evidence...' : '';
+
+    if (fileInput.files.length > 0) {
+        const file = fileInput.files[0];
+        const path = `evidence/${Date.now()}_${file.name}`;
+        await sbClient.storage.from('evidence').upload(path, file);
+        const { data: { publicUrl } } = sbClient.storage.from('evidence').getPublicUrl(path);
+        mediaUrl = publicUrl;
+    }
 
     // Optimistic Update
     const idx = sessions.findIndex(x => x.id === id);
@@ -590,6 +628,7 @@ async function handleEditSession(e) {
         sessions[idx].date = date;
         sessions[idx].value = value ? parseFloat(value) : null;
         sessions[idx].notes = notes;
+        sessions[idx].media = mediaUrl;
     }
     closeModal('editSessionModal');
     renderMain();
@@ -598,10 +637,12 @@ async function handleEditSession(e) {
     await sbClient.from('sessions').update({ 
         date, 
         value: value ? parseFloat(value) : null, 
-        notes 
+        notes,
+        media: mediaUrl
     }).eq('id', id);
     
     await loadData();
+    submitBtn.disabled = false;
     renderMain();
 }
 
