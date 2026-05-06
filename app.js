@@ -92,7 +92,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 function renderSidebar() {
     const nav = document.getElementById('habitNav');
     if (!nav) return;
-    nav.innerHTML = habits.map(h => {
+    
+    const activeHabitsList = habits.filter(h => !h.is_archived);
+    const archivedHabitsList = habits.filter(h => h.is_archived);
+    
+    let html = '';
+    
+    html += activeHabitsList.map(h => {
         const count = sessions.filter(s => s.habitId === h.id).length;
         return `<div class="habit-nav-item ${activeHabit === h.id ? 'active' : ''}" onclick="selectHabit('${h.id}')">
             <span class="habit-nav-icon">${h.icon}</span>
@@ -106,6 +112,25 @@ function renderSidebar() {
             </div>
         </div>`;
     }).join('');
+
+    if (archivedHabitsList.length > 0) {
+        html += `<div class="sidebar-section-label" style="margin-top: 1.5rem; color: var(--dim);">ARCHIVED</div>`;
+        html += archivedHabitsList.map(h => {
+            const count = sessions.filter(s => s.habitId === h.id).length;
+            return `<div class="habit-nav-item ${activeHabit === h.id ? 'active' : ''}" onclick="selectHabit('${h.id}')" style="opacity: 0.6">
+                <span class="habit-nav-icon" style="filter: grayscale(1)">${h.icon}</span>
+                <div class="habit-nav-info">
+                    <span class="habit-nav-name" style="text-decoration: line-through">${h.name}</span>
+                    <span class="habit-nav-count">${count} sessions</span>
+                </div>
+                <div class="habit-nav-actions">
+                    <span class="edit-icon" onclick="event.stopPropagation(); openEditHabit('${h.id}')">⚙</span>
+                </div>
+            </div>`;
+        }).join('');
+    }
+    
+    nav.innerHTML = html;
 }
 
 async function quickLog(habitId) {
@@ -499,7 +524,8 @@ async function handleAddHabit(e) {
     const id = 'h_' + Date.now();
     await sbClient.from('habits').insert({ 
         id, name, icon, unit, description, color,
-        goal_type, goal_target: goal_target ? parseFloat(goal_target) : null
+        goal_type, goal_target: goal_target ? parseFloat(goal_target) : null,
+        is_archived: false
     });
     await loadData(); activeHabit = id; closeModal('addHabitModal'); renderSidebar(); renderMain();
 }
@@ -512,6 +538,7 @@ function openEditHabit(id) {
     document.getElementById('editHabitDesc').value = h.description || '';
     document.getElementById('editHabitGoalType').value = h.goal_type || 'count';
     document.getElementById('editHabitGoalTarget').value = h.goal_target || '';
+    document.getElementById('archiveHabitBtn').textContent = h.is_archived ? 'Unarchive' : 'Archive';
     // Set Pickers
     document.querySelectorAll('#editIconPicker .icon-opt').forEach(o => o.classList.toggle('selected', o.dataset.icon === h.icon));
     document.querySelectorAll('#editColorPicker .color-opt').forEach(o => o.classList.toggle('selected', o.dataset.color === h.color));
@@ -571,6 +598,26 @@ function confirmDeleteHabit() {
         };
     }
     openModal('deleteModal');
+}
+
+async function toggleArchiveHabit() {
+    const id = document.getElementById('editHabitModal').dataset.habitId;
+    const h = habits.find(x => x.id === id);
+    if (!h) return;
+    
+    const isNowArchived = !h.is_archived;
+    await sbClient.from('habits').update({ is_archived: isNowArchived }).eq('id', id);
+    await loadData();
+    closeModal('editHabitModal');
+    
+    // If we just archived the currently active habit, switch away from it if possible
+    if (isNowArchived && activeHabit === id) {
+        const firstActive = habits.find(x => !x.is_archived);
+        activeHabit = firstActive ? firstActive.id : (habits.length ? habits[0].id : null);
+    }
+    
+    renderSidebar();
+    if (activeHabit) renderMain(); else renderWelcome();
 }
 
 // ── Log Session ────────────────────────────────────────
