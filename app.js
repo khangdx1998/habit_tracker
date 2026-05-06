@@ -191,6 +191,27 @@ function renderMain() {
                 </div>
             </div>
         </div>
+
+        ${h.goal_target ? `
+        <div class="section-card" style="margin-bottom:1.5rem; padding:1.2rem">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.8rem">
+                <div>
+                    <h3 style="font-size:0.9rem; font-weight:700">Mastery Progress</h3>
+                    <p style="font-size:0.75rem; color:var(--dim)">Goal: ${h.goal_target} ${h.goal_type==='value'?(h.unit||'units'):'sessions'}</p>
+                </div>
+                <div style="font-size:1.5rem; font-weight:800; color:${h.color}">
+                    ${Math.min(Math.round(((h.goal_type==='value'?Math.max(...ss.map(s=>s.value||0),0):stats.total)/h.goal_target)*100),100)}%
+                </div>
+            </div>
+            <div style="height:8px; background:rgba(255,255,255,0.05); border-radius:4px; overflow:hidden">
+                <div style="height:100%; width:${Math.min(((h.goal_type==='value'?Math.max(...ss.map(s=>s.value||0),0):stats.total)/h.goal_target)*100,100)}%; background:linear-gradient(90deg, ${h.color}, ${h.color}cc); box-shadow:0 0 15px ${h.color}40; transition:1s"></div>
+            </div>
+            <p style="font-size:0.7rem; color:var(--dim); margin-top:0.6rem">
+                ${h.goal_type==='value' ? `Current Max: ${Math.max(...ss.map(s=>s.value||0),0)} ${h.unit||''}` : `Current: ${stats.total} sessions`}
+            </p>
+        </div>
+        ` : ''}
+
         <section class="section-card" id="heatmapSection">
             <div class="section-header">
                 <div><span class="section-title">📊 Activity</span> <span class="badge" id="yearlyTotal"></span></div>
@@ -435,6 +456,8 @@ function openAddHabitModal() {
     document.getElementById('habitName').value=''; 
     document.getElementById('habitUnit').value=''; 
     document.getElementById('habitDesc').value='';
+    document.getElementById('habitGoalType').value='count';
+    document.getElementById('habitGoalTarget').value='';
     // Reset Pickers
     document.querySelectorAll('#iconPicker .icon-opt').forEach((o,i)=>o.classList.toggle('selected',i===0));
     document.querySelectorAll('#colorPicker .color-opt').forEach((o,i)=>o.classList.toggle('selected',i===0));
@@ -448,9 +471,15 @@ async function handleAddHabit(e) {
     const unit = document.getElementById('habitUnit').value.trim();
     const description = document.getElementById('habitDesc').value.trim();
     const color = document.querySelector('#colorPicker .color-opt.selected')?.dataset.color || '#22c55e';
+    const goal_type = document.getElementById('habitGoalType').value;
+    const goal_target = document.getElementById('habitGoalTarget').value;
+    
     if (!name) return;
     const id = 'h_' + Date.now();
-    await sbClient.from('habits').insert({ id, name, icon, unit, description, color });
+    await sbClient.from('habits').insert({ 
+        id, name, icon, unit, description, color,
+        goal_type, goal_target: goal_target ? parseFloat(goal_target) : null
+    });
     await loadData(); activeHabit = id; closeModal('addHabitModal'); renderSidebar(); renderMain();
 }
 
@@ -460,6 +489,8 @@ function openEditHabit(id) {
     document.getElementById('editHabitName').value = h.name;
     document.getElementById('editHabitUnit').value = h.unit || '';
     document.getElementById('editHabitDesc').value = h.description || '';
+    document.getElementById('editHabitGoalType').value = h.goal_type || 'count';
+    document.getElementById('editHabitGoalTarget').value = h.goal_target || '';
     // Set Pickers
     document.querySelectorAll('#editIconPicker .icon-opt').forEach(o => o.classList.toggle('selected', o.dataset.icon === h.icon));
     document.querySelectorAll('#editColorPicker .color-opt').forEach(o => o.classList.toggle('selected', o.dataset.color === h.color));
@@ -475,7 +506,13 @@ async function handleEditHabit(e) {
     const unit = document.getElementById('editHabitUnit').value.trim();
     const description = document.getElementById('editHabitDesc').value.trim();
     const color = document.querySelector('#editColorPicker .color-opt.selected')?.dataset.color;
-    await sbClient.from('habits').update({ name, icon, unit, description, color }).eq('id', id);
+    const goal_type = document.getElementById('editHabitGoalType').value;
+    const goal_target = document.getElementById('editHabitGoalTarget').value;
+    
+    await sbClient.from('habits').update({ 
+        name, icon, unit, description, color,
+        goal_type, goal_target: goal_target ? parseFloat(goal_target) : null
+    }).eq('id', id);
     await loadData(); closeModal('editHabitModal'); renderSidebar(); renderMain();
 }
 
