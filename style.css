@@ -104,12 +104,15 @@ body {
 .quick-log-btn:hover { transform: scale(1.1) rotate(90deg); filter: brightness(1.2); }
 
 .habit-nav-item .edit-icon {
-    font-size: 0.85rem;
-    color: var(--dim);
+    font-size: 1.2rem;
+    color: rgba(255, 255, 255, 0.6);
     cursor: pointer;
     transition: var(--transition);
+    padding: 0 4px;
+    display: flex;
+    align-items: center;
 }
-.habit-nav-item .edit-icon:hover { color: var(--text); }
+.habit-nav-item .edit-icon:hover { color: #fff; transform: rotate(90deg); }
 
 .add-habit-btn {
     display: flex;
