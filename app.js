@@ -160,7 +160,7 @@ async function quickLog(habitId) {
     fireConfetti();
 
     // Background Cloud Sync
-    await sbClient.from('sessions').insert({ 
+    const { error } = await sbClient.from('sessions').insert({ 
         id, 
         habit_id: habitId, 
         date: today, 
@@ -169,6 +169,14 @@ async function quickLog(habitId) {
         time: newSession.time,
         status: 'Draft'
     });
+    
+    if (error) {
+        console.error('Insert error:', error);
+        showAlert('Save Failed', 'Could not save to Cloud: ' + error.message + '. (If this is a column error, make sure "status" is added in Supabase).');
+        // Revert optimistic update
+        sessions = sessions.filter(x => x.id !== id);
+        renderSidebar(); renderMain();
+    }
 }
 
 function selectHabit(id) { 
@@ -780,7 +788,14 @@ async function handleLogSubmit(e) {
     }
 
     const id = 's_'+Date.now();
-    await sbClient.from('sessions').insert({ id, habit_id: activeHabit, date, value: value ? parseFloat(value) : null, notes, media: mediaUrl, time: new Date().toTimeString().substring(0,5), status: 'Draft' });
+    const { error: insertErr } = await sbClient.from('sessions').insert({ id, habit_id: activeHabit, date, value: value ? parseFloat(value) : null, notes, media: mediaUrl, time: new Date().toTimeString().substring(0,5), status: 'Draft' });
+    
+    if (insertErr) {
+        showAlert('Save Failed', 'Could not save to Cloud: ' + insertErr.message);
+        submitBtn.disabled = false;
+        return;
+    }
+    
     await loadData(); 
     submitBtn.disabled = false;
     closeModal('logModal'); renderSidebar(); renderMain();
