@@ -105,7 +105,7 @@ function renderSidebar() {
     let html = '';
     
     html += activeHabitsList.map(h => {
-        const count = sessions.filter(s => s.habitId === h.id).length;
+        const count = sessions.filter(s => s.habitId === h.id && s.status === 'Approved').length;
         return `<div class="habit-nav-item ${activeHabit === h.id ? 'active' : ''}" onclick="selectHabit('${h.id}')">
             <span class="habit-nav-icon">${h.icon}</span>
             <div class="habit-nav-info">
@@ -122,7 +122,7 @@ function renderSidebar() {
     if (archivedHabitsList.length > 0) {
         html += `<div class="sidebar-section-label" style="margin-top: 1.5rem; color: var(--dim);">ARCHIVED</div>`;
         html += archivedHabitsList.map(h => {
-            const count = sessions.filter(s => s.habitId === h.id).length;
+            const count = sessions.filter(s => s.habitId === h.id && s.status === 'Approved').length;
             return `<div class="habit-nav-item ${activeHabit === h.id ? 'active' : ''}" onclick="selectHabit('${h.id}')" style="opacity: 0.6">
                 <span class="habit-nav-icon" style="filter: grayscale(1)">${h.icon}</span>
                 <div class="habit-nav-info">
@@ -200,7 +200,7 @@ function renderMain() {
     }
     const h = habits.find(x => x.id === activeHabit);
     if (!h) { renderWelcome(); return; }
-    const ss = sessions.filter(s => s.habitId === h.id);
+    const ss = sessions.filter(s => s.habitId === h.id && s.status === 'Approved');
     const stats = computeStats(ss);
     const main = document.getElementById('mainContent');
 
@@ -334,7 +334,7 @@ function renderDashboard() {
     startOfWeek.setHours(0,0,0,0);
     
     activeHabitsList.forEach(h => {
-        const ss = sessions.filter(s => s.habitId === h.id);
+        const ss = sessions.filter(s => s.habitId === h.id && s.status === 'Approved');
         totalSessionsAllTime += ss.length;
         
         ss.forEach(s => {
@@ -344,7 +344,7 @@ function renderDashboard() {
     });
 
     const habitCardsHTML = activeHabitsList.map(h => {
-        const ss = sessions.filter(s => s.habitId === h.id);
+        const ss = sessions.filter(s => s.habitId === h.id && s.status === 'Approved');
         const stats = computeStats(ss);
         return `
             <div class="stat-card" style="cursor:pointer; transition:transform 0.2s;" onclick="selectHabit('${h.id}')">
@@ -521,7 +521,7 @@ function switchYear(y) {
     currentYear = y;
     const h = habits.find(x=>x.id===activeHabit);
     if (!h) return;
-    const ss = sessions.filter(s=>s.habitId===h.id);
+    const ss = sessions.filter(s=>s.habitId===h.id && s.status === 'Approved');
     renderHeatmap(y, h, ss); renderYearPills(ss);
 }
 
