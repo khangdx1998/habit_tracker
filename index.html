@@ -83,12 +83,16 @@
                 <div class="form-row">
                     <div class="form-group">
                         <label for="habitIcon">Icon</label>
-                        <input type="text" id="habitIcon" placeholder="🎸" maxlength="4" value="📌">
+                        <input type="text" id="habitIcon" placeholder="📌" maxlength="4">
                     </div>
                     <div class="form-group">
-                        <label for="habitUnit">Unit <span class="label-hint">(optional)</span></label>
-                        <input type="text" id="habitUnit" placeholder="BPM, pages, mins...">
+                        <label for="habitUnit">Unit <span class="label-hint">(e.g. kg, mins)</span></label>
+                        <input type="text" id="habitUnit" placeholder="mins">
                     </div>
+                </div>
+                <div class="form-group">
+                    <label for="habitDesc">Description</label>
+                    <textarea id="habitDesc" placeholder="Why are you tracking this?" rows="2"></textarea>
                 </div>
                 <div class="form-group">
                     <label for="habitColor">Color</label>
@@ -184,6 +188,10 @@
                         <label for="editHabitUnit">Unit</label>
                         <input type="text" id="editHabitUnit">
                     </div>
+                </div>
+                <div class="form-group">
+                    <label for="editHabitDesc">Description</label>
+                    <textarea id="editHabitDesc" rows="2"></textarea>
                 </div>
                 <div class="form-group">
                     <label>Color</label>

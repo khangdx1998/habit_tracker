@@ -119,7 +119,10 @@ function renderMain() {
         <div class="habit-header">
             <div class="habit-title-group">
                 <span class="habit-title-icon">${h.icon}</span>
-                <div><div class="habit-title">${h.name}</div><div class="habit-subtitle">${h.unit ? 'Tracking in '+h.unit : 'Progress tracker'}</div></div>
+                <div>
+                    <div class="habit-title">${h.name}</div>
+                    <div class="habit-desc-header">${h.description || (h.unit ? 'Tracking in ' + h.unit : 'Progress tracker')}</div>
+                </div>
             </div>
             <button class="btn btn-primary" onclick="openLogSession()">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -379,27 +382,36 @@ function renderAchievements(stats) {
 }
 
 // ── Add Habit ──────────────────────────────────────────
-function openAddHabitModal() { openModal('addHabitModal'); document.getElementById('habitName').value=''; document.getElementById('habitIcon').value='📌'; document.getElementById('habitUnit').value=''; document.querySelectorAll('#colorPicker .color-opt').forEach((o,i)=>{o.classList.toggle('selected',i===0);}); setTimeout(()=>document.getElementById('habitName').focus(),100); }
+function openAddHabitModal() { 
+    openModal('addHabitModal'); 
+    document.getElementById('habitName').value=''; 
+    document.getElementById('habitIcon').value='📌'; 
+    document.getElementById('habitUnit').value=''; 
+    document.getElementById('habitDesc').value='';
+    document.querySelectorAll('#colorPicker .color-opt').forEach((o,i)=>{o.classList.toggle('selected',i===0);}); 
+    setTimeout(()=>document.getElementById('habitName').focus(),100); 
+}
 
 async function handleAddHabit(e) {
     e.preventDefault();
     const name = document.getElementById('habitName').value.trim();
     const icon = document.getElementById('habitIcon').value.trim() || '📌';
     const unit = document.getElementById('habitUnit').value.trim();
+    const description = document.getElementById('habitDesc').value.trim();
     const color = document.querySelector('#colorPicker .color-opt.selected')?.dataset.color || '#22c55e';
     if (!name) return;
     const id = 'h_' + Date.now();
-    await sbClient.from('habits').insert({ id, name, icon, unit, color });
+    await sbClient.from('habits').insert({ id, name, icon, unit, description, color });
     await loadData(); activeHabit = id; closeModal('addHabitModal'); renderSidebar(); renderMain();
 }
 
-// ── Edit Habit ─────────────────────────────────────────
 function openEditHabit(id) {
     const h = habits.find(x=>x.id===id);
     if (!h) return;
     document.getElementById('editHabitName').value = h.name;
     document.getElementById('editHabitIcon').value = h.icon;
     document.getElementById('editHabitUnit').value = h.unit || '';
+    document.getElementById('editHabitDesc').value = h.description || '';
     document.querySelectorAll('#editColorPicker .color-opt').forEach(o => o.classList.toggle('selected', o.dataset.color === h.color));
     document.getElementById('editHabitModal').dataset.habitId = id;
     openModal('editHabitModal');
@@ -411,8 +423,9 @@ async function handleEditHabit(e) {
     const name = document.getElementById('editHabitName').value.trim();
     const icon = document.getElementById('editHabitIcon').value.trim();
     const unit = document.getElementById('editHabitUnit').value.trim();
+    const description = document.getElementById('editHabitDesc').value.trim();
     const color = document.querySelector('#editColorPicker .color-opt.selected')?.dataset.color;
-    await sbClient.from('habits').update({ name, icon, unit, color }).eq('id', id);
+    await sbClient.from('habits').update({ name, icon, unit, description, color }).eq('id', id);
     await loadData(); closeModal('editHabitModal'); renderSidebar(); renderMain();
 }
 

@@ -142,7 +142,7 @@ body {
 .habit-title-group { display: flex; align-items: center; gap: 14px; }
 .habit-title-icon { font-size: 2rem; }
 .habit-title { font-size: 1.8rem; font-weight: 800; letter-spacing: -0.5px; }
-.habit-subtitle { font-size: 0.75rem; color: var(--dim); margin-top: 2px; }
+.habit-desc-header { font-size: 0.8rem; color: var(--dim); margin-top: 4px; max-width: 500px; line-height: 1.4; }
 
 /* ── Buttons ───────────────────────────────────────────── */
 .btn {
