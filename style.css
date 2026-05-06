@@ -331,13 +331,70 @@ th:hover { color: var(--text); }
     box-shadow: 0 20px 40px rgba(0,0,0,0.5);
 }
 
-@media (max-width: 768px) {
-    .app-layout { grid-template-columns: 1fr; }
-    .sidebar { display: none; } /* Add a mobile toggle later if needed */
-    .two-col { grid-template-columns: 1fr; }
+/* ── Mobile Optimization ──────────────────────────── */
+.mobile-header {
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.8rem 1.2rem;
+    background: rgba(15, 23, 42, 0.8);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    position: sticky;
+    top: 0;
+    z-index: 100;
 }
-@media (max-width: 700px) {
-    :root { --sidebar-w: 200px; }
-    .main-content { padding: 1.2rem; }
+
+.menu-btn {
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 0.75rem;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+}
+
+.mobile-close {
+    display: none;
+    background: none;
+    border: none;
+    color: var(--dim);
+    font-size: 1.2rem;
+    cursor: pointer;
+}
+
+@media (max-width: 850px) {
+    .sidebar {
+        transform: translateX(-100%);
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 20px 0 50px rgba(0,0,0,0.5);
+    }
+    .sidebar.open { transform: translateX(0); }
+    .sidebar .mobile-close { display: block; }
+    
+    .main-content { margin-left: 0; padding: 1.2rem; }
+    .mobile-header { display: flex; }
+
+    .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 0.8rem; }
+    .stat-card { padding: 1rem; }
+    .stat-value { font-size: 1.3rem; }
+
+    .heatmap-wrapper {
+        overflow-x: auto;
+        padding-bottom: 1rem;
+        mask-image: linear-gradient(to right, black 85%, transparent 100%);
+    }
+    .heatmap-content { min-width: 650px; }
+
+    .two-col { grid-template-columns: 1fr; }
+    .habit-header { flex-direction: column; align-items: flex-start; gap: 1rem; }
+    .habit-header .btn { width: 100%; justify-content: center; }
+}
+
+@media (max-width: 480px) {
     .stats-grid { grid-template-columns: 1fr; }
+    .stat-value { font-size: 1.5rem; }
 }

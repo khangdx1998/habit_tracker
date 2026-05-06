@@ -93,7 +93,19 @@ function renderSidebar() {
     }).join('');
 }
 
-function selectHabit(id) { activeHabit = id; currentYear = new Date().getFullYear(); sortField='date'; sortDir='desc'; showAllSessions = false; renderSidebar(); renderMain(); }
+function selectHabit(id) { 
+    activeHabit = id; 
+    currentYear = new Date().getFullYear(); 
+    sortField='date'; sortDir='desc'; 
+    showAllSessions = false; 
+    renderSidebar(); 
+    renderMain();
+    if (window.innerWidth <= 850) toggleSidebar(); 
+}
+
+function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('open');
+}
 
 // ── Main Content ───────────────────────────────────────
 function renderMain() {
