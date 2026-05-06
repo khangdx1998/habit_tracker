@@ -96,11 +96,46 @@ function renderSidebar() {
         const count = sessions.filter(s => s.habitId === h.id).length;
         return `<div class="habit-nav-item ${activeHabit === h.id ? 'active' : ''}" onclick="selectHabit('${h.id}')">
             <span class="habit-nav-icon">${h.icon}</span>
-            <span class="habit-nav-name">${h.name}</span>
-            <span class="habit-nav-count">${count}</span>
-            <span class="edit-icon" onclick="event.stopPropagation(); openEditHabit('${h.id}')">⚙</span>
+            <div class="habit-nav-info">
+                <span class="habit-nav-name">${h.name}</span>
+                <span class="habit-nav-count">${count} sessions</span>
+            </div>
+            <div class="habit-nav-actions">
+                <button class="quick-log-btn" onclick="event.stopPropagation(); quickLog('${h.id}')" title="Quick Log Today">+</button>
+                <span class="edit-icon" onclick="event.stopPropagation(); openEditHabit('${h.id}')">⚙</span>
+            </div>
         </div>`;
     }).join('');
+}
+
+async function quickLog(habitId) {
+    const today = fmtDate(new Date());
+    const id = 's_' + Date.now();
+    const newSession = { 
+        id, 
+        habit_id: habitId, 
+        habitId: habitId,
+        date: today, 
+        value: null, 
+        notes: 'Quick log', 
+        time: new Date().toTimeString().substring(0,5) 
+    };
+    
+    // Optimistic Update (Show it immediately!)
+    sessions.push(newSession);
+    renderSidebar();
+    if (activeHabit === habitId) renderMain();
+    fireConfetti();
+
+    // Background Cloud Sync
+    await sbClient.from('sessions').insert({ 
+        id, 
+        habit_id: habitId, 
+        date: today, 
+        value: null, 
+        notes: 'Quick log', 
+        time: newSession.time 
+    });
 }
 
 function selectHabit(id) { 
