@@ -166,6 +166,37 @@
             </form>
         </div>
     </div>
+    <!-- ── Edit Session Modal ────────────────────────── -->
+    <div class="modal-overlay" id="editSessionModal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h2 id="editSessionTitle">Edit Session</h2>
+                <button class="close-btn" onclick="closeModal('editSessionModal')">&times;</button>
+            </div>
+            <form onsubmit="handleEditSession(event)">
+                <input type="hidden" id="editSessionId">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="editLogDate">Date</label>
+                        <input type="date" id="editLogDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editLogValue">Value <span id="editLogUnitHint" class="label-hint"></span></label>
+                        <input type="number" step="any" id="editLogValue">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="editLogNotes">Notes</label>
+                    <textarea id="editLogNotes" rows="3" placeholder="How did it go?"></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-ghost" onclick="closeModal('editSessionModal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="saveEditSessionBtn">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
 
     <!-- ── Delete Confirm Modal ─────────────────────── -->
     <div class="modal-overlay" id="deleteModal">

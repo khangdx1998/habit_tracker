@@ -391,7 +391,10 @@ function renderTable() {
                 <td>${vd}</td>
                 <td>${mediaBtn}</td>
                 <td style="color:var(--dim);font-size:0.78rem;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.notes||'—'}</td>
-                <td><button class="action-btn" onclick="confirmDeleteSession('${s.id}')">✕</button></td>
+                <td style="white-space:nowrap">
+                    <button class="action-btn" onclick="openEditSession('${s.id}')" style="margin-right:4px">✏️</button>
+                    <button class="action-btn" onclick="confirmDeleteSession('${s.id}')">✕</button>
+                </td>
             </tr>`;
         }).join('')}</tbody></table></div>`;
 
@@ -555,6 +558,51 @@ async function handleLogSubmit(e) {
     await loadData(); 
     submitBtn.disabled = false;
     closeModal('logModal'); renderSidebar(); renderMain();
+}
+
+// ── Edit Session ──────────────────────────────────────
+function openEditSession(id) {
+    const s = sessions.find(x => x.id === id);
+    const h = habits.find(x => x.id === s.habitId);
+    if (!s || !h) return;
+
+    document.getElementById('editSessionId').value = s.id;
+    document.getElementById('editLogDate').value = s.date;
+    document.getElementById('editLogValue').value = s.value || '';
+    document.getElementById('editLogNotes').value = s.notes || '';
+    document.getElementById('editLogUnitHint').textContent = h.unit ? `(${h.unit})` : '';
+    
+    openModal('editSessionModal');
+}
+
+async function handleEditSession(e) {
+    e.preventDefault();
+    const id = document.getElementById('editSessionId').value;
+    const date = document.getElementById('editLogDate').value;
+    const value = document.getElementById('editLogValue').value;
+    const notes = document.getElementById('editLogNotes').value.trim();
+
+    if (!date) return;
+
+    // Optimistic Update
+    const idx = sessions.findIndex(x => x.id === id);
+    if (idx !== -1) {
+        sessions[idx].date = date;
+        sessions[idx].value = value ? parseFloat(value) : null;
+        sessions[idx].notes = notes;
+    }
+    closeModal('editSessionModal');
+    renderMain();
+
+    // Cloud Update
+    await sbClient.from('sessions').update({ 
+        date, 
+        value: value ? parseFloat(value) : null, 
+        notes 
+    }).eq('id', id);
+    
+    await loadData();
+    renderMain();
 }
 
 // ── Media Review ───────────────────────────────────────
