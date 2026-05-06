@@ -149,7 +149,8 @@ async function quickLog(habitId) {
         date: today, 
         value: null, 
         notes: 'Quick log', 
-        time: new Date().toTimeString().substring(0,5) 
+        time: new Date().toTimeString().substring(0,5),
+        status: 'Draft'
     };
     
     // Optimistic Update (Show it immediately!)
@@ -165,7 +166,8 @@ async function quickLog(habitId) {
         date: today, 
         value: null, 
         notes: 'Quick log', 
-        time: newSession.time 
+        time: newSession.time,
+        status: 'Draft'
     });
 }
 
@@ -554,20 +556,32 @@ function renderTable() {
     let html = `<div class="table-wrapper"><table><thead><tr>
         <th onclick="doSort('date')">Date${sortField==='date'?(sortDir==='desc'?' ↓':' ↑'):''}</th>
         <th onclick="doSort('value')">Value${sortField==='value'?(sortDir==='desc'?' ↓':' ↑'):''}</th>
+        <th>Status</th>
         <th>Evidence</th>
         <th>Notes</th>
         <th>Actions</th></tr></thead><tbody>
         ${displayList.map(s => {
             const vd = s.value != null ? `<span class="value-tag" style="background:${h.color}20;color:${h.color}">${s.value}${h.unit?' '+h.unit:''}</span>` : '<span style="color:var(--dim)">—</span>';
             const mediaBtn = s.media ? `<button class="action-btn view-btn" onclick="openMedia('${s.id}')" style="background:${h.color}20; color:${h.color}">👁 View</button>` : '<span style="color:var(--dim); font-size:0.7rem">None</span>';
+            const statusLabel = s.status === 'Approved' ? `<span style="color:var(--green); font-size:0.75rem; font-weight:700; padding:2px 6px; background:var(--green-glow); border-radius:4px;">✓ Approved</span>` : `<span style="color:var(--dim); font-size:0.75rem; font-weight:600; padding:2px 6px; background:rgba(255,255,255,0.05); border-radius:4px;">Draft</span>`;
+            
+            let actionsHTML = '';
+            if (s.status !== 'Approved') {
+                actionsHTML += `<button class="action-btn" onclick="approveSession('${s.id}')" title="Approve" style="margin-right:4px; color:var(--green)">✓</button>`;
+                actionsHTML += `<button class="action-btn" onclick="openEditSession('${s.id}')" title="Edit" style="margin-right:4px">✏️</button>`;
+                actionsHTML += `<button class="action-btn" onclick="confirmDeleteSession('${s.id}')" title="Delete">✕</button>`;
+            } else {
+                actionsHTML += `<span style="color:var(--dim); font-size:0.8rem">Locked</span>`;
+            }
+            
             return `<tr>
                 <td>${s.date}</td>
                 <td>${vd}</td>
+                <td>${statusLabel}</td>
                 <td>${mediaBtn}</td>
                 <td style="color:var(--dim);font-size:0.78rem;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.notes||'—'}</td>
                 <td style="white-space:nowrap">
-                    <button class="action-btn" onclick="openEditSession('${s.id}')" style="margin-right:4px">✏️</button>
-                    <button class="action-btn" onclick="confirmDeleteSession('${s.id}')">✕</button>
+                    ${actionsHTML}
                 </td>
             </tr>`;
         }).join('')}</tbody></table></div>`;
@@ -766,7 +780,7 @@ async function handleLogSubmit(e) {
     }
 
     const id = 's_'+Date.now();
-    await sbClient.from('sessions').insert({ id, habit_id: activeHabit, date, value: value ? parseFloat(value) : null, notes, media: mediaUrl, time: new Date().toTimeString().substring(0,5) });
+    await sbClient.from('sessions').insert({ id, habit_id: activeHabit, date, value: value ? parseFloat(value) : null, notes, media: mediaUrl, time: new Date().toTimeString().substring(0,5), status: 'Draft' });
     await loadData(); 
     submitBtn.disabled = false;
     closeModal('logModal'); renderSidebar(); renderMain();
@@ -876,6 +890,11 @@ function openMedia(sessionId) {
 
 // ── Delete Session ─────────────────────────────────────
 function confirmDeleteSession(id) {
+    const s = sessions.find(x => x.id === id);
+    if (s && s.status === 'Approved') {
+        alert("Approved sessions cannot be deleted.");
+        return;
+    }
     document.getElementById('deleteTitle').textContent = 'Delete Session?';
     document.getElementById('deleteDesc').textContent = 'This cannot be undone.';
     const confirmBtn = document.getElementById('confirmDeleteBtn');
@@ -885,6 +904,20 @@ function confirmDeleteSession(id) {
         await sbClient.from('sessions').delete().eq('id', id);
         await loadData(); closeModal('deleteModal'); renderSidebar(); renderMain();
     };
+}
+
+async function approveSession(id) {
+    if (!confirm('Approve this session? Once approved, it cannot be edited or deleted.')) return;
+    
+    // Optimistic Update
+    const idx = sessions.findIndex(x => x.id === id);
+    if (idx !== -1) sessions[idx].status = 'Approved';
+    renderMain();
+    
+    // Cloud Sync
+    await sbClient.from('sessions').update({ status: 'Approved' }).eq('id', id);
+    await loadData();
+    renderMain();
 }
 
 // ── Export / Import ────────────────────────────────────
