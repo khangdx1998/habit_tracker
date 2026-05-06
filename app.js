@@ -774,7 +774,7 @@ async function handleLogSubmit(e) {
         const ext = file.name.split('.').pop();
         const fileName = `${Date.now()}.${ext}`;
         const { data, error } = await sbClient.storage.from('evidence').upload(fileName, file);
-        if (error) { alert('Upload error: ' + error.message); submitBtn.disabled = false; return; }
+        if (error) { showAlert('Upload Error', error.message); submitBtn.disabled = false; return; }
         const { data: { publicUrl } } = sbClient.storage.from('evidence').getPublicUrl(fileName);
         mediaUrl = publicUrl;
     }
@@ -892,7 +892,7 @@ function openMedia(sessionId) {
 function confirmDeleteSession(id) {
     const s = sessions.find(x => x.id === id);
     if (s && s.status === 'Approved') {
-        alert("Approved sessions cannot be deleted.");
+        showAlert("Notice", "Approved sessions cannot be deleted.");
         return;
     }
     document.getElementById('deleteTitle').textContent = 'Delete Session?';
@@ -906,18 +906,22 @@ function confirmDeleteSession(id) {
     };
 }
 
-async function approveSession(id) {
-    if (!confirm('Approve this session? Once approved, it cannot be edited or deleted.')) return;
+function approveSession(id) {
+    const confirmBtn = document.getElementById('confirmApproveBtn');
+    openModal('approveModal');
     
-    // Optimistic Update
-    const idx = sessions.findIndex(x => x.id === id);
-    if (idx !== -1) sessions[idx].status = 'Approved';
-    renderMain();
-    
-    // Cloud Sync
-    await sbClient.from('sessions').update({ status: 'Approved' }).eq('id', id);
-    await loadData();
-    renderMain();
+    confirmBtn.onclick = async () => {
+        closeModal('approveModal');
+        // Optimistic Update
+        const idx = sessions.findIndex(x => x.id === id);
+        if (idx !== -1) sessions[idx].status = 'Approved';
+        renderMain();
+        
+        // Cloud Sync
+        await sbClient.from('sessions').update({ status: 'Approved' }).eq('id', id);
+        await loadData();
+        renderMain();
+    };
 }
 
 // ── Export / Import ────────────────────────────────────
@@ -927,5 +931,11 @@ function exportData() {
     a.download = `trackpro_cloud_backup.json`; a.click(); URL.revokeObjectURL(a.href);
 }
 async function importData(e) {
-    alert('Import disabled for Cloud version to prevent conflicts. Use the dashboard to add data!');
+    showAlert('Notice', 'Import disabled for Cloud version to prevent conflicts. Use the dashboard to add data!');
+}
+
+function showAlert(title, desc) {
+    document.getElementById('alertTitle').textContent = title;
+    document.getElementById('alertDesc').textContent = desc;
+    openModal('alertModal');
 }

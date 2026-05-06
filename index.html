@@ -243,6 +243,35 @@
         </div>
     </div>
 
+    <!-- ── Approve Confirm Modal ─────────────────────── -->
+    <div class="modal-overlay" id="approveModal">
+        <div class="modal-card modal-sm">
+            <div class="modal-header">
+                <h2>Approve Session?</h2>
+                <button class="close-btn" onclick="closeModal('approveModal')">&times;</button>
+            </div>
+            <p style="color:var(--dim); margin-bottom:1.5rem;">Once approved, it cannot be edited or deleted.</p>
+            <div class="form-actions">
+                <button class="btn btn-ghost" onclick="closeModal('approveModal')">Cancel</button>
+                <button class="btn btn-primary" id="confirmApproveBtn" style="background:var(--green); border-color:var(--green); color:white;">Approve</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Alert Message Modal ─────────────────────── -->
+    <div class="modal-overlay" id="alertModal">
+        <div class="modal-card modal-sm">
+            <div class="modal-header">
+                <h2 id="alertTitle">Notice</h2>
+                <button class="close-btn" onclick="closeModal('alertModal')">&times;</button>
+            </div>
+            <p style="color:var(--dim); margin-bottom:1.5rem;" id="alertDesc"></p>
+            <div class="form-actions">
+                <button class="btn btn-primary" style="width:100%" onclick="closeModal('alertModal')">OK</button>
+            </div>
+        </div>
+    </div>
+
     <!-- ── Edit Habit Modal ─────────────────────────── -->
     <div class="modal-overlay" id="editHabitModal">
         <div class="modal-card modal-sm">
