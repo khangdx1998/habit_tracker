@@ -1,0 +1,12 @@
+# Local data and uploads
+data.json
+uploads/
+__pycache__/
+
+# Local server scripts (not needed for Vercel)
+server.py
+run.sh
+generate_dummy_data.py
+
+# System files
+.DS_Store

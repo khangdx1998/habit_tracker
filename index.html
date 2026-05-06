@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Track Pro — Progress Dashboard</title>
+    <meta name="description" content="Track each habit individually with its own heatmap, streaks, and progress.">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🚀</text></svg>">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <div class="ambient-orb orb-1"></div>
+    <div class="ambient-orb orb-2"></div>
+    <div class="ambient-orb orb-3"></div>
+    <div id="tooltip"></div>
+
+    <div class="app-layout">
+        <!-- ── Sidebar ──────────────────────────────── -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="logo-row">
+                    <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
+                        <defs><linearGradient id="lg" x1="0" y1="0" x2="32" y2="32"><stop offset="0%" stop-color="#6366f1"/><stop offset="100%" stop-color="#a855f7"/></linearGradient></defs>
+                        <rect width="32" height="32" rx="8" fill="url(#lg)"/>
+                        <path d="M10 22V14L16 10L22 14V22L16 18L10 22Z" fill="white" opacity="0.9"/>
+                    </svg>
+                    <span class="logo-text">Track Pro</span>
+                </div>
+            </div>
+
+            <div class="sidebar-section-label">HABITS</div>
+            <nav class="habit-nav" id="habitNav"></nav>
+
+            <button class="add-habit-btn" id="addHabitBtn" onclick="openAddHabitModal()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                New Habit
+            </button>
+
+            <div class="sidebar-bottom">
+                <button class="sidebar-action" onclick="exportData()" title="Export">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    Export
+                </button>
+                <button class="sidebar-action" onclick="document.getElementById('importFile').click()" title="Import">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    Import
+                </button>
+                <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
+            </div>
+        </aside>
+
+        <!-- ── Main Content ─────────────────────────── -->
+        <main class="main-content" id="mainContent">
+            <!-- Filled dynamically by JS -->
+        </main>
+    </div>
+
+    <!-- ── Add Habit Modal ──────────────────────────── -->
+    <div class="modal-overlay" id="addHabitModal">
+        <div class="modal-card modal-sm">
+            <div class="modal-header">
+                <h2>New Habit</h2>
+                <button class="close-btn" onclick="closeModal('addHabitModal')">&times;</button>
+            </div>
+            <form onsubmit="handleAddHabit(event)">
+                <div class="form-group">
+                    <label for="habitName">Habit Name</label>
+                    <input type="text" id="habitName" required placeholder="e.g. Guitar, Reading, Gym...">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="habitIcon">Icon</label>
+                        <input type="text" id="habitIcon" placeholder="🎸" maxlength="4" value="📌">
+                    </div>
+                    <div class="form-group">
+                        <label for="habitUnit">Unit <span class="label-hint">(optional)</span></label>
+                        <input type="text" id="habitUnit" placeholder="BPM, pages, mins...">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="habitColor">Color</label>
+                    <div class="color-picker" id="colorPicker">
+                        <div class="color-opt selected" data-color="#22c55e" style="background:#22c55e"></div>
+                        <div class="color-opt" data-color="#6366f1" style="background:#6366f1"></div>
+                        <div class="color-opt" data-color="#f59e0b" style="background:#f59e0b"></div>
+                        <div class="color-opt" data-color="#ef4444" style="background:#ef4444"></div>
+                        <div class="color-opt" data-color="#06b6d4" style="background:#06b6d4"></div>
+                        <div class="color-opt" data-color="#ec4899" style="background:#ec4899"></div>
+                        <div class="color-opt" data-color="#8b5cf6" style="background:#8b5cf6"></div>
+                        <div class="color-opt" data-color="#f97316" style="background:#f97316"></div>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-ghost" onclick="closeModal('addHabitModal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Habit</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ── Log Session Modal ────────────────────────── -->
+    <div class="modal-overlay" id="logModal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h2 id="logModalTitle">Log Session</h2>
+                <button class="close-btn" onclick="closeModal('logModal')">&times;</button>
+            </div>
+            <form id="logForm" onsubmit="handleLogSubmit(event)">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="logDate">Date</label>
+                        <input type="date" id="logDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="logValue">Value <span class="label-hint" id="logUnitHint"></span></label>
+                        <input type="number" id="logValue" placeholder="e.g. 75" step="any">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="logNotes">Notes <span class="label-hint">(optional)</span></label>
+                    <textarea id="logNotes" rows="2" placeholder="How did it go?"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Evidence (Photo/Video)</label>
+                    <div class="file-upload-wrapper">
+                        <input type="file" id="logFile" accept="image/*,video/*" class="file-input">
+                        <div id="uploadStatus" style="font-size:0.7rem;margin-top:0.3rem;color:var(--dim)"></div>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-ghost" onclick="closeModal('logModal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ── Delete Confirm Modal ─────────────────────── -->
+    <div class="modal-overlay" id="deleteModal">
+        <div class="modal-card modal-sm">
+            <div class="modal-header">
+                <h2 id="deleteTitle">Delete?</h2>
+                <button class="close-btn" onclick="closeModal('deleteModal')">&times;</button>
+            </div>
+            <p style="color:var(--dim); margin-bottom:1.5rem;" id="deleteDesc">This cannot be undone.</p>
+            <div class="form-actions">
+                <button class="btn btn-ghost" onclick="closeModal('deleteModal')">Cancel</button>
+                <button class="btn btn-danger" id="confirmDeleteBtn">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Edit Habit Modal ─────────────────────────── -->
+    <div class="modal-overlay" id="editHabitModal">
+        <div class="modal-card modal-sm">
+            <div class="modal-header">
+                <h2>Edit Habit</h2>
+                <button class="close-btn" onclick="closeModal('editHabitModal')">&times;</button>
+            </div>
+            <form onsubmit="handleEditHabit(event)">
+                <div class="form-group">
+                    <label for="editHabitName">Name</label>
+                    <input type="text" id="editHabitName" required>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="editHabitIcon">Icon</label>
+                        <input type="text" id="editHabitIcon" maxlength="4">
+                    </div>
+                    <div class="form-group">
+                        <label for="editHabitUnit">Unit</label>
+                        <input type="text" id="editHabitUnit">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Color</label>
+                    <div class="color-picker" id="editColorPicker">
+                        <div class="color-opt" data-color="#22c55e" style="background:#22c55e"></div>
+                        <div class="color-opt" data-color="#6366f1" style="background:#6366f1"></div>
+                        <div class="color-opt" data-color="#f59e0b" style="background:#f59e0b"></div>
+                        <div class="color-opt" data-color="#ef4444" style="background:#ef4444"></div>
+                        <div class="color-opt" data-color="#06b6d4" style="background:#06b6d4"></div>
+                        <div class="color-opt" data-color="#ec4899" style="background:#ec4899"></div>
+                        <div class="color-opt" data-color="#8b5cf6" style="background:#8b5cf6"></div>
+                        <div class="color-opt" data-color="#f97316" style="background:#f97316"></div>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-danger-ghost" onclick="confirmDeleteHabit()" style="margin-right:auto">Delete Habit</button>
+                    <button type="button" class="btn btn-ghost" onclick="closeModal('editHabitModal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ── Media Review Modal ─────────────────────── -->
+    <div class="modal-overlay" id="mediaModal">
+        <div class="modal-card" style="max-width:900px; width:95vw;">
+            <div class="modal-header">
+                <h2 id="mediaModalTitle">Review Evidence</h2>
+                <button class="close-btn" onclick="closeModal('mediaModal')">&times;</button>
+            </div>
+            <div id="mediaViewer" style="margin-top:1rem; min-height:300px; display:flex; align-items:center; justify-content:center; background:#000; border-radius:12px; overflow:hidden;">
+                <!-- Media injected here -->
+            </div>
+            <div id="mediaNotes" style="margin-top:1.2rem; padding:1rem; background:rgba(255,255,255,0.03); border-radius:8px; color:var(--dim); font-size:0.9rem;"></div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
