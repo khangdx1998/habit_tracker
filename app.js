@@ -96,6 +96,12 @@ function renderSidebar() {
     const activeHabitsList = habits.filter(h => !h.is_archived);
     const archivedHabitsList = habits.filter(h => h.is_archived);
     
+    const dashboardLabel = document.getElementById('totalHabitsLabel');
+    if (dashboardLabel) dashboardLabel.textContent = `${activeHabitsList.length} active`;
+    
+    const dashboardNav = document.getElementById('navDashboard');
+    if (dashboardNav) dashboardNav.classList.toggle('active', activeHabit === 'dashboard');
+    
     let html = '';
     
     html += activeHabitsList.map(h => {
@@ -173,12 +179,23 @@ function selectHabit(id) {
     if (window.innerWidth <= 850) toggleSidebar(); 
 }
 
+function selectDashboard() {
+    activeHabit = 'dashboard';
+    renderSidebar();
+    renderMain();
+    if (window.innerWidth <= 850) toggleSidebar(); 
+}
+
 function toggleSidebar() {
     document.getElementById('sidebar').classList.toggle('open');
 }
 
 // ── Main Content ───────────────────────────────────────
 function renderMain() {
+    if (activeHabit === 'dashboard') {
+        renderDashboard();
+        return;
+    }
     const h = habits.find(x => x.id === activeHabit);
     if (!h) { renderWelcome(); return; }
     const ss = sessions.filter(s => s.habitId === h.id);
@@ -293,6 +310,96 @@ function renderMain() {
     renderYearPills(ss);
     renderTable();
     renderAchievements(stats);
+}
+
+function renderDashboard() {
+    const main = document.getElementById('mainContent');
+    const activeHabitsList = habits.filter(h => !h.is_archived);
+    
+    if (activeHabitsList.length === 0) {
+        renderWelcome();
+        return;
+    }
+
+    let totalSessionsAllTime = 0;
+    let totalSessionsThisWeek = 0;
+    
+    const today = new Date();
+    const dow = today.getDay();
+    const off = dow === 0 ? 6 : dow - 1;
+    const startOfWeek = new Date(today);
+    startOfWeek.setDate(today.getDate() - off);
+    startOfWeek.setHours(0,0,0,0);
+    
+    activeHabitsList.forEach(h => {
+        const ss = sessions.filter(s => s.habitId === h.id);
+        totalSessionsAllTime += ss.length;
+        
+        ss.forEach(s => {
+            const sd = new Date(s.date);
+            if (sd >= startOfWeek) totalSessionsThisWeek++;
+        });
+    });
+
+    const habitCardsHTML = activeHabitsList.map(h => {
+        const ss = sessions.filter(s => s.habitId === h.id);
+        const stats = computeStats(ss);
+        return `
+            <div class="stat-card" style="cursor:pointer; transition:transform 0.2s;" onclick="selectHabit('${h.id}')">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <div style="display:flex; gap:10px; align-items:center;">
+                        <span style="font-size:1.5rem">${h.icon}</span>
+                        <div style="font-weight:600">${h.name}</div>
+                    </div>
+                    <div style="color:${h.color}; font-weight:800">${stats.current} 🔥</div>
+                </div>
+                <div style="margin-top:1rem; font-size:0.8rem; color:var(--dim);">
+                    ${stats.total} total sessions
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    main.innerHTML = `
+        <div class="habit-header">
+            <div class="habit-title-group">
+                <span class="habit-title-icon">📊</span>
+                <div>
+                    <div class="habit-title">Dashboard Overview</div>
+                    <div class="habit-desc-header">All active habits combined</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="stats-grid" style="margin-bottom: 2rem;">
+            <div class="stat-card">
+                <div class="stat-icon-wrap" style="background:rgba(99, 102, 241, 0.2); color:#6366f1">📋</div>
+                <div class="stat-info">
+                    <div class="stat-value">${activeHabitsList.length}</div>
+                    <div class="stat-label">Active Habits</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon-wrap" style="background:rgba(34, 197, 94, 0.2); color:#22c55e">📅</div>
+                <div class="stat-info">
+                    <div class="stat-value">${totalSessionsThisWeek}</div>
+                    <div class="stat-label">Sessions This Week</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon-wrap" style="background:rgba(245, 158, 11, 0.2); color:#f59e0b">⚡</div>
+                <div class="stat-info">
+                    <div class="stat-value">${totalSessionsAllTime}</div>
+                    <div class="stat-label">All-Time Logs</div>
+                </div>
+            </div>
+        </div>
+        
+        <h3 style="margin-bottom:1rem; font-size:1.1rem;">Active Habits</h3>
+        <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap:1rem;">
+            ${habitCardsHTML}
+        </div>
+    `;
 }
 
 function renderWelcome() {
