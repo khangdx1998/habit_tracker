@@ -298,7 +298,7 @@ function renderMain() {
         ${renderProgressSection(h, ss)}
         <section class="section-card">
             <div class="section-header">
-                <span class="section-title">🕒 Sessions</span>
+                <span class="section-title">🕒 Draft Sessions</span>
                 <input type="text" class="search-input" id="activitySearch" placeholder="🔍 Filter..." oninput="renderTable()">
             </div>
             <div id="tableWrap"></div>
@@ -532,7 +532,7 @@ function renderTable() {
     const wrap = document.getElementById('tableWrap');
     if (!wrap) return;
     
-    let ss = sessions.filter(s=>s.habitId===h.id);
+    let ss = sessions.filter(s=>s.habitId===h.id && s.status !== 'Approved');
     const q = (document.getElementById('activitySearch')?.value||'').toLowerCase();
     
     if (q) ss = ss.filter(s => s.date.includes(q) || (s.notes||'').toLowerCase().includes(q));
@@ -544,7 +544,7 @@ function renderTable() {
     });
 
     if (ss.length === 0) { 
-        wrap.innerHTML = `<div class="empty-state"><div class="empty-icon">📝</div><h3>No sessions yet</h3><p>Click "Log Session" to start!</p></div>`; 
+        wrap.innerHTML = `<div class="empty-state"><div class="empty-icon">🎉</div><h3>All caught up!</h3><p>No draft sessions waiting for approval.</p></div>`; 
         return; 
     }
 
