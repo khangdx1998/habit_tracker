@@ -193,22 +193,43 @@ function renderMain() {
         </div>
 
         ${h.goal_target ? `
-        <div class="section-card" style="margin-bottom:1.5rem; padding:1.2rem">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.8rem">
+        <div class="section-card mastery-card" style="margin-bottom:1.8rem; padding:1.8rem; position:relative; overflow:hidden; border: 1px solid ${h.color}30; background: linear-gradient(145deg, var(--card), ${h.color}0a);">
+            <!-- Subtle background glow -->
+            <div style="position:absolute; top:-50%; right:-10%; width:200px; height:200px; background:${h.color}; filter:blur(100px); opacity:0.15; border-radius:50%; pointer-events:none;"></div>
+            
+            <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:1.2rem; position:relative; z-index:1;">
                 <div>
-                    <h3 style="font-size:0.9rem; font-weight:700">Mastery Progress</h3>
-                    <p style="font-size:0.75rem; color:var(--dim)">Goal: ${h.goal_target} ${h.goal_type==='value'?(h.unit||'units'):'sessions'}</p>
+                    <h3 style="font-size:1.1rem; font-weight:800; display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+                        <span style="font-size:1.2rem;">✨</span> Mastery Progress
+                    </h3>
+                    <p style="font-size:0.8rem; color:var(--dim); font-weight:500;">
+                        Target: <strong style="color:var(--text)">${h.goal_target} ${h.goal_type==='value'?(h.unit||'units'):'sessions'}</strong>
+                    </p>
                 </div>
-                <div style="font-size:1.5rem; font-weight:800; color:${h.color}">
-                    ${Math.min(Math.round(((h.goal_type==='value'?Math.max(...ss.map(s=>s.value||0),0):stats.total)/h.goal_target)*100),100)}%
+                <div style="text-align:right;">
+                    <div style="font-size:2.8rem; font-weight:900; line-height:1; color:${h.color}; text-shadow: 0 0 25px ${h.color}60; font-variant-numeric: tabular-nums;">
+                        ${Math.min(Math.round(((h.goal_type==='value'?Math.max(...ss.map(s=>s.value||0),0):stats.total)/h.goal_target)*100),100)}<span style="font-size:1.4rem;opacity:0.8">%</span>
+                    </div>
                 </div>
             </div>
-            <div style="height:8px; background:rgba(255,255,255,0.05); border-radius:4px; overflow:hidden">
-                <div style="height:100%; width:${Math.min(((h.goal_type==='value'?Math.max(...ss.map(s=>s.value||0),0):stats.total)/h.goal_target)*100,100)}%; background:linear-gradient(90deg, ${h.color}, ${h.color}cc); box-shadow:0 0 15px ${h.color}40; transition:1s"></div>
+            
+            <div style="position:relative; z-index:1; margin-bottom:1rem;">
+                <!-- Track -->
+                <div style="height:16px; background:rgba(0,0,0,0.6); border-radius:8px; overflow:hidden; box-shadow:inset 0 2px 8px rgba(0,0,0,0.9); position:relative;">
+                    <!-- Fill -->
+                    <div style="height:100%; width:${Math.min(((h.goal_type==='value'?Math.max(...ss.map(s=>s.value||0),0):stats.total)/h.goal_target)*100,100)}%; background:linear-gradient(90deg, ${h.color}60, ${h.color}); box-shadow:0 0 20px ${h.color}90; border-radius:8px; transition:width 1s cubic-bezier(0.4, 0, 0.2, 1); position:relative; overflow:hidden;">
+                        <!-- Shimmer effect -->
+                        <div style="position:absolute; top:0; left:-100%; right:0; bottom:0; background:linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent); transform:skewX(-20deg); animation:shimmer 2.5s infinite;"></div>
+                    </div>
+                </div>
             </div>
-            <p style="font-size:0.7rem; color:var(--dim); margin-top:0.6rem">
-                ${h.goal_type==='value' ? `Current Max: ${Math.max(...ss.map(s=>s.value||0),0)} ${h.unit||''}` : `Current: ${stats.total} sessions`}
-            </p>
+            
+            <div style="display:flex; justify-content:space-between; align-items:center; position:relative; z-index:1;">
+                <p style="font-size:0.8rem; color:var(--dim); font-weight:500;">
+                    Currently at: <strong style="color:var(--text)">${h.goal_type==='value' ? Math.max(...ss.map(s=>s.value||0),0) : stats.total}</strong>
+                </p>
+                ${Math.min(Math.round(((h.goal_type==='value'?Math.max(...ss.map(s=>s.value||0),0):stats.total)/h.goal_target)*100),100) >= 100 ? `<span style="font-size:0.8rem; font-weight:700; color:var(--green); background:var(--green-glow); padding:4px 10px; border-radius:12px; box-shadow: 0 0 10px var(--green-glow);">🎉 Goal Reached!</span>` : `<span style="font-size:0.8rem; color:var(--dim); font-weight:500;">Keep going! 🚀</span>`}
+            </div>
         </div>
         ` : ''}
 
