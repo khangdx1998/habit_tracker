@@ -275,11 +275,16 @@ th:hover { color: var(--text); }
 .form-group input:focus, .form-group textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
 .form-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 0.4rem; }
 
-/* ── Color Picker ──────────────────────────────────────── */
-.color-picker { display: flex; gap: 8px; flex-wrap: wrap; }
-.color-opt { width: 28px; height: 28px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: var(--transition); }
-.color-opt:hover { transform: scale(1.15); }
-.color-opt.selected { border-color: white; box-shadow: 0 0 10px currentColor; }
+/* ── Color & Icon Picker ───────────────────────────────── */
+.color-picker, .icon-picker { display: flex; gap: 8px; flex-wrap: wrap; }
+.color-opt, .icon-opt { 
+    width: 32px; height: 32px; border-radius: 50%; cursor: pointer; 
+    border: 2px solid transparent; transition: var(--transition); 
+    display: flex; align-items: center; justify-content: center;
+}
+.color-opt:hover, .icon-opt:hover { transform: scale(1.15); background: rgba(255,255,255,0.05); }
+.color-opt.selected, .icon-opt.selected { border-color: white; box-shadow: 0 0 10px rgba(255,255,255,0.2); background: rgba(255,255,255,0.1); }
+.icon-opt { font-size: 1.2rem; }
 
 /* ── Tooltip ───────────────────────────────────────────── */
 #tooltip { position: fixed; background: rgba(10,10,18,0.95); color: white; padding: 5px 10px; border-radius: 6px; font-size: 0.68rem; font-weight: 500; display: none; pointer-events: none; z-index: 2000; white-space: nowrap; border: 1px solid var(--border); box-shadow: 0 6px 20px rgba(0,0,0,0.5); }

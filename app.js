@@ -52,8 +52,9 @@ const closeModal = id => document.getElementById(id).classList.remove('open');
 const openModal = id => document.getElementById(id).classList.add('open');
 const fmtDate = d => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 
-// ── Color Pickers ──────────────────────────────────────
-function initColorPickers() {
+// ── Color & Icon Pickers ──────────────────────────────
+function initPickers() {
+    // Color Pickers
     document.querySelectorAll('.color-picker').forEach(picker => {
         picker.querySelectorAll('.color-opt').forEach(opt => {
             opt.onclick = () => {
@@ -62,11 +63,20 @@ function initColorPickers() {
             };
         });
     });
+    // Icon Pickers
+    document.querySelectorAll('.icon-picker').forEach(picker => {
+        picker.querySelectorAll('.icon-opt').forEach(opt => {
+            opt.onclick = () => {
+                picker.querySelectorAll('.icon-opt').forEach(o => o.classList.remove('selected'));
+                opt.classList.add('selected');
+            };
+        });
+    });
 }
 
 // ── Init ───────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
-    initColorPickers();
+    initPickers();
     await loadData();
     renderSidebar();
     if (habits.length > 0) { 
@@ -385,17 +395,18 @@ function renderAchievements(stats) {
 function openAddHabitModal() { 
     openModal('addHabitModal'); 
     document.getElementById('habitName').value=''; 
-    document.getElementById('habitIcon').value='📌'; 
     document.getElementById('habitUnit').value=''; 
     document.getElementById('habitDesc').value='';
-    document.querySelectorAll('#colorPicker .color-opt').forEach((o,i)=>{o.classList.toggle('selected',i===0);}); 
+    // Reset Pickers
+    document.querySelectorAll('#iconPicker .icon-opt').forEach((o,i)=>o.classList.toggle('selected',i===0));
+    document.querySelectorAll('#colorPicker .color-opt').forEach((o,i)=>o.classList.toggle('selected',i===0));
     setTimeout(()=>document.getElementById('habitName').focus(),100); 
 }
 
 async function handleAddHabit(e) {
     e.preventDefault();
     const name = document.getElementById('habitName').value.trim();
-    const icon = document.getElementById('habitIcon').value.trim() || '📌';
+    const icon = document.querySelector('#iconPicker .icon-opt.selected')?.dataset.icon || '📌';
     const unit = document.getElementById('habitUnit').value.trim();
     const description = document.getElementById('habitDesc').value.trim();
     const color = document.querySelector('#colorPicker .color-opt.selected')?.dataset.color || '#22c55e';
@@ -409,9 +420,10 @@ function openEditHabit(id) {
     const h = habits.find(x=>x.id===id);
     if (!h) return;
     document.getElementById('editHabitName').value = h.name;
-    document.getElementById('editHabitIcon').value = h.icon;
     document.getElementById('editHabitUnit').value = h.unit || '';
     document.getElementById('editHabitDesc').value = h.description || '';
+    // Set Pickers
+    document.querySelectorAll('#editIconPicker .icon-opt').forEach(o => o.classList.toggle('selected', o.dataset.icon === h.icon));
     document.querySelectorAll('#editColorPicker .color-opt').forEach(o => o.classList.toggle('selected', o.dataset.color === h.color));
     document.getElementById('editHabitModal').dataset.habitId = id;
     openModal('editHabitModal');
@@ -421,7 +433,7 @@ async function handleEditHabit(e) {
     e.preventDefault();
     const id = document.getElementById('editHabitModal').dataset.habitId;
     const name = document.getElementById('editHabitName').value.trim();
-    const icon = document.getElementById('editHabitIcon').value.trim();
+    const icon = document.querySelector('#editIconPicker .icon-opt.selected')?.dataset.icon;
     const unit = document.getElementById('editHabitUnit').value.trim();
     const description = document.getElementById('editHabitDesc').value.trim();
     const color = document.querySelector('#editColorPicker .color-opt.selected')?.dataset.color;
