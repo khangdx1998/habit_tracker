@@ -450,16 +450,21 @@ function renderDashboard() {
         const ss = sessions.filter(s => s.habitId === h.id && s.status === 'Approved');
         const stats = computeStats(ss);
         return `
-            <div class="stat-card" style="cursor:pointer; transition:transform 0.2s;" onclick="selectHabit('${h.id}')">
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <div style="display:flex; gap:10px; align-items:center;">
-                        <span style="font-size:1.5rem">${h.icon}</span>
-                        <div style="font-weight:600">${h.name}</div>
+            <div class="stat-card" style="cursor:pointer; transition:all 0.2s; padding:1.2rem; display:flex; flex-direction:column; justify-content:space-between; min-height:100px;" onclick="selectHabit('${h.id}')">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
+                    <div style="display:flex; gap:12px; align-items:center; overflow:hidden;">
+                        <span style="font-size:1.4rem; flex-shrink:0;">${h.icon}</span>
+                        <div style="font-weight:700; font-size:1rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${h.name}</div>
                     </div>
-                    <div style="color:${h.color}; font-weight:800">${stats.current} 🔥</div>
+                    <div style="display:flex; flex-direction:column; align-items:flex-end; flex-shrink:0;">
+                        <div style="color:${h.color}; font-weight:900; font-size:1.2rem; display:flex; align-items:center; gap:4px;">
+                            ${stats.current} <span style="font-size:1.1rem;">🔥</span>
+                        </div>
+                    </div>
                 </div>
-                <div style="margin-top:1rem; font-size:0.8rem; color:var(--dim);">
-                    ${stats.total} total sessions
+                <div style="margin-top:1rem; font-size:0.75rem; color:var(--dim); font-weight:500; display:flex; justify-content:space-between; align-items:center;">
+                    <span>${stats.total} total sessions</span>
+                    <span style="opacity:0.5; font-size:0.7rem;">VIEW DETAILS →</span>
                 </div>
             </div>
         `;
