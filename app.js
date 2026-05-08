@@ -483,8 +483,10 @@ function renderDashboard() {
             </div>
         </div>
         
-        <div class="stats-grid" style="margin-bottom: 2rem;">
+        <div class="stats-grid" style="margin-bottom: 3rem;">
             <div class="stat-card">
+                <div class="stat-icon-wrap" style="background:rgba(139, 92, 246, 0.2); color:#8b5cf6">📁</div>
+                <div class="stat-info">
                     <div class="stat-value">${activeHabitsList.length}</div>
                     <div class="stat-label">Active Habits</div>
                 </div>
@@ -505,9 +507,13 @@ function renderDashboard() {
             </div>
         </div>
         
-        <h3 style="margin-bottom:1rem; font-size:1.1rem;">Active Habits</h3>
-        <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap:1rem;">
-            ${habitCardsHTML}
+        <div style="margin-top:2rem;">
+            <h3 style="margin-bottom:1.5rem; font-size:1.1rem; display:flex; align-items:center; gap:10px;">
+                <span style="opacity:0.6;">🔥</span> Quick Access
+            </h3>
+            <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap:1.2rem;">
+                ${habitCardsHTML}
+            </div>
         </div>
     `;
 }
