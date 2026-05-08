@@ -308,10 +308,12 @@ function renderMain() {
     if (activeHabit === 'tags') {
         renderTagsDashboard();
         return;
-    } else if (activeHabit === 'coach') {
+    }
+    if (activeHabit === 'coach') {
         renderCoachDashboard();
         return;
-    } else if (activeHabit === 'reflections') {
+    }
+    if (activeHabit === 'reflections') {
         renderReflectionsDashboard();
         return;
     }
@@ -1440,9 +1442,15 @@ function renderCoachDashboard() {
 
     // Analyze last 30 days
     const activeHabitsList = habits.filter(h => !h.is_deleted && !h.is_archived);
+    let totalSessionsThisWeek = 0;
+    const todayDate = new Date();
+    const dow = todayDate.getDay(), off = dow === 0 ? 6 : dow - 1;
+    const startOfWeek = new Date(todayDate); startOfWeek.setDate(todayDate.getDate() - off); startOfWeek.setHours(0, 0, 0, 0);
+
     activeHabitsList.forEach(h => {
         const hSessions = sessions.filter(s => s.habitId === h.id && s.status === 'Approved');
         hSessions.forEach(s => {
+            if (new Date(s.date) >= startOfWeek) totalSessionsThisWeek++;
             const ref = refMap[s.date];
             if (ref) {
                 if (ref.mood) { moodCompletion[ref.mood].t++; moodCompletion[ref.mood].c++; }
