@@ -449,8 +449,20 @@ function renderDashboard() {
     const habitCardsHTML = activeHabitsList.map(h => {
         const ss = sessions.filter(s => s.habitId === h.id && s.status === 'Approved');
         const stats = computeStats(ss);
+        
+        // Calculate relative time for last session
+        let lastActiveText = 'No sessions yet';
+        if (ss.length > 0) {
+            const lastDate = new Date(ss.sort((a,b) => b.date.localeCompare(a.date))[0].date);
+            const today = new Date();
+            const diffDays = Math.floor((today - lastDate) / (1000 * 60 * 60 * 24));
+            if (diffDays === 0) lastActiveText = 'Active today';
+            else if (diffDays === 1) lastActiveText = 'Active yesterday';
+            else lastActiveText = `Active ${diffDays} days ago`;
+        }
+
         return `
-            <div class="stat-card" style="cursor:pointer; transition:all 0.2s; padding:1.2rem; display:flex; flex-direction:column; justify-content:space-between; min-height:100px;" onclick="selectHabit('${h.id}')">
+            <div class="stat-card" style="cursor:pointer; transition:all 0.2s; padding:1.2rem; display:flex; flex-direction:column; justify-content:space-between; min-height:110px;" onclick="selectHabit('${h.id}')">
                 <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
                     <div style="display:flex; gap:12px; align-items:center; overflow:hidden;">
                         <span style="font-size:1.4rem; flex-shrink:0;">${h.icon}</span>
@@ -460,10 +472,12 @@ function renderDashboard() {
                         <div style="color:${h.color}; font-weight:900; font-size:1.2rem; display:flex; align-items:center; gap:4px;">
                             ${stats.current} <span style="font-size:1.1rem;">🔥</span>
                         </div>
+                        <div style="font-size:0.65rem; color:var(--dim); font-weight:700; text-transform:uppercase; margin-top:2px;">Best: ${stats.best}</div>
                     </div>
                 </div>
-                <div style="margin-top:1rem; font-size:0.75rem; color:var(--dim); font-weight:500;">
-                    ${stats.total} total sessions
+                <div style="margin-top:1rem; font-size:0.75rem; color:var(--dim); font-weight:500; display:flex; justify-content:space-between; align-items:center;">
+                    <span>${lastActiveText}</span>
+                    <span style="opacity:0.6; font-size:0.7rem;">Total: ${ss.length}</span>
                 </div>
             </div>
         `;
