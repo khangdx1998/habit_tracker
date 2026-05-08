@@ -5,7 +5,7 @@ const SB_KEY = 'REMOVED_KEY';
 // The global 'supabase' object comes from the CDN script
 const sbClient = supabase.createClient(SB_URL, SB_KEY);
 
-let habits = [], sessions = [], tags = [];
+let habits = [], sessions = [], tags = [], milestones = [];
 let activeHabit = null, currentYear = new Date().getFullYear();
 let sortField = 'date', sortDir = 'desc';
 let showAllSessions = false;
@@ -16,6 +16,7 @@ const loadData = async () => {
         const { data: hData, error: hErr } = await sbClient.from('habits').select('*');
         const { data: sData, error: sErr } = await sbClient.from('sessions').select('*');
         const { data: tData, error: tErr } = await sbClient.from('tags').select('*');
+        const { data: mData, error: mErr } = await sbClient.from('milestones').select('*');
         
         if (hErr || sErr) throw hErr || sErr;
 
@@ -25,6 +26,7 @@ const loadData = async () => {
         const validHabitIds = new Set(habits.map(h => h.id));
         sessions = (sData || []).filter(s => validHabitIds.has(s.habit_id) && !s.is_deleted).map(s => ({ ...s, habitId: s.habit_id }));
         tags = tData || [];
+        milestones = mData || [];
 
         // Migration: If Cloud is empty but localStorage has data, push to Cloud
         const localHabits = JSON.parse(localStorage.getItem('tp_habits') || '[]');
@@ -373,7 +375,7 @@ function renderMain() {
     renderHeatmap(currentYear, h, ss);
     renderYearPills(ss);
     renderTable();
-    renderAchievements(stats);
+    renderAchievements(h, stats);
 }
 
 function renderDashboard() {
@@ -534,7 +536,8 @@ function computeStats(ss) {
     const mon = new Date(today); mon.setDate(today.getDate() - off); mon.setHours(0,0,0,0);
     let weekDays = 0;
     for (let i = 0; i < 7; i++) { const d = new Date(mon); d.setDate(mon.getDate()+i); if (dates.includes(fmtDate(d))) weekDays++; }
-    return { current, longest, total: ss.length, weekDays };
+    const bestValue = ss.length ? Math.max(...ss.map(s => parseFloat(s.value) || 0), 0) : 0;
+    return { current, longest, total: ss.length, weekDays, bestValue };
 }
 
 // ── Heatmap ────────────────────────────────────────────
@@ -666,16 +669,23 @@ function renderTable() {
 function toggleShowAll() { showAllSessions = !showAllSessions; renderTable(); }
 function doSort(f) { if(sortField===f) sortDir=sortDir==='asc'?'desc':'asc'; else { sortField=f; sortDir=f==='date'?'desc':'asc'; } renderTable(); }
 
-// ── Achievements ───────────────────────────────────────
-function renderAchievements(stats) {
-    const defs = [
+// ── Achievements / Milestones ─────────────────────────
+function renderAchievements(habit, stats) {
+    const habitMilestones = milestones.filter(m => m.habit_id === habit.id);
+    
+    // Default fallback achievements if no custom milestones exist
+    const defs = habitMilestones.length > 0 ? habitMilestones.map(m => ({
+        title: m.title,
+        desc: `Reach ${m.target_count} ${habit.goal_type==='value'?(habit.unit||'units'):'sessions'}`,
+        icon: m.icon || '🎯',
+        check: s => (habit.goal_type === 'value' ? stats.bestValue : s.total) >= m.target_count
+    })) : [
         { title:"First Step", desc:"Log 1 session", icon:"🌱", check: s=>s.total>=1 },
         { title:"Week Warrior", desc:"7-day streak", icon:"🔥", check: s=>s.longest>=7 },
         { title:"Unstoppable", desc:"30-day streak", icon:"💎", check: s=>s.longest>=30 },
-        { title:"Half Century", desc:"50 sessions", icon:"⚡", check: s=>s.total>=50 },
         { title:"Centurion", desc:"100 sessions", icon:"👑", check: s=>s.total>=100 },
-        { title:"Perfect Week", desc:"5 days this week", icon:"🌟", check: s=>s.weekDays>=5 },
     ];
+
     const el = document.getElementById('achieveGrid');
     if (!el) return;
     el.innerHTML = defs.map(a => {
@@ -732,6 +742,8 @@ function openEditHabit(id) {
     document.querySelectorAll('#editIconPicker .icon-opt').forEach(o => o.classList.toggle('selected', o.dataset.icon === h.icon));
     document.querySelectorAll('#editColorPicker .color-opt').forEach(o => o.classList.toggle('selected', o.dataset.color === h.color));
     document.getElementById('editHabitModal').dataset.habitId = id;
+    
+    renderEditMilestones(id);
     openModal('editHabitModal');
 }
 
@@ -1131,4 +1143,52 @@ async function handleDeleteTag(id) {
     await loadData();
     if (activeHabit === 'tags') renderTagsDashboard();
     renderSidebarTags();
+}
+
+// ── Milestone Management ───────────────────────────────
+function renderEditMilestones(habitId) {
+    const list = document.getElementById('editMilestonesList');
+    if (!list) return;
+    const ms = milestones.filter(m => m.habit_id === habitId);
+    list.innerHTML = ms.map(m => `
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:8px; background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:8px;">
+            <div style="display:flex; flex-direction:column;">
+                <span style="font-size:0.8rem; font-weight:700;">${m.title}</span>
+                <span style="font-size:0.7rem; color:var(--dim);">Target: ${m.target_count}</span>
+            </div>
+            <button type="button" class="action-btn" onclick="handleDeleteMilestone('${m.id}')" style="color:var(--red); border-color:transparent;">✕</button>
+        </div>
+    `).join('');
+    if (ms.length === 0) list.innerHTML = '<div style="text-align:center; color:var(--dim); font-size:0.75rem;">No custom milestones yet.</div>';
+}
+
+async function handleAddMilestone() {
+    const habitId = document.getElementById('editHabitModal').dataset.habitId;
+    const title = document.getElementById('newMilestoneTitle').value.trim();
+    const target = document.getElementById('newMilestoneTarget').value;
+    
+    if (!title || !target) return;
+    
+    const id = 'm_' + Date.now();
+    await sbClient.from('milestones').insert({ 
+        id, 
+        habit_id: habitId, 
+        title, 
+        target_count: parseInt(target) 
+    });
+    
+    document.getElementById('newMilestoneTitle').value = '';
+    document.getElementById('newMilestoneTarget').value = '';
+    
+    await loadData();
+    renderEditMilestones(habitId);
+    renderMain();
+}
+
+async function handleDeleteMilestone(id) {
+    const habitId = document.getElementById('editHabitModal').dataset.habitId;
+    await sbClient.from('milestones').delete().eq('id', id);
+    await loadData();
+    renderEditMilestones(habitId);
+    renderMain();
 }
