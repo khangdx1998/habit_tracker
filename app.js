@@ -23,7 +23,7 @@ const loadData = async () => {
         // Filter out soft-deleted habits
         habits = (hData || []).filter(h => !h.is_deleted);
         const validHabitIds = new Set(habits.map(h => h.id));
-        sessions = (sData || []).filter(s => validHabitIds.has(s.habit_id)).map(s => ({ ...s, habitId: s.habit_id }));
+        sessions = (sData || []).filter(s => validHabitIds.has(s.habit_id) && !s.is_deleted).map(s => ({ ...s, habitId: s.habit_id }));
         tags = tData || [];
 
         // Migration: If Cloud is empty but localStorage has data, push to Cloud
@@ -191,7 +191,8 @@ async function quickLog(habitId) {
         value: null, 
         notes: 'Quick log', 
         time: new Date().toTimeString().substring(0,5),
-        status: 'Draft'
+        status: 'Draft',
+        is_deleted: false
     };
     
     // Optimistic Update (Show it immediately!)
@@ -208,7 +209,8 @@ async function quickLog(habitId) {
         value: null, 
         notes: 'Quick log', 
         time: newSession.time,
-        status: 'Draft'
+        status: 'Draft',
+        is_deleted: false
     });
     
     if (error) {
@@ -875,7 +877,8 @@ async function handleLogSubmit(e) {
         media: mediaUrl, 
         time: new Date().toTimeString().substring(0,5), 
         status: 'Draft',
-        tag_ids: tagIds
+        tag_ids: tagIds,
+        is_deleted: false
     });
     
     if (insertErr) {
@@ -1008,12 +1011,13 @@ function confirmDeleteSession(id) {
         return;
     }
     document.getElementById('deleteTitle').textContent = 'Delete Session?';
-    document.getElementById('deleteDesc').textContent = 'This cannot be undone.';
+    document.getElementById('deleteDesc').textContent = 'This will hide the session. It will not be permanently removed.';
     const confirmBtn = document.getElementById('confirmDeleteBtn');
     confirmBtn.style.display = 'block';
     openModal('deleteModal');
     confirmBtn.onclick = async () => {
-        await sbClient.from('sessions').delete().eq('id', id);
+        // Soft delete for sessions
+        await sbClient.from('sessions').update({ is_deleted: true }).eq('id', id);
         await loadData(); closeModal('deleteModal'); renderSidebar(); renderMain();
     };
 }
