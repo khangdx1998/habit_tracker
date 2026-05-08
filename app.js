@@ -466,52 +466,42 @@ function renderDashboard() {
     }).join('');
 
     main.innerHTML = `
-        <div class="habit-header">
+        <div class="habit-header" style="margin-bottom: 2.5rem;">
             <div class="habit-title-group">
-                <span class="habit-title-icon">📊</span>
+                <span class="habit-title-icon" style="background: linear-gradient(135deg, #8b5cf6, #d946ef); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">📊</span>
                 <div>
-                    <div class="habit-title">Dashboard Overview</div>
-                    <div class="habit-desc-header">All active habits combined</div>
+                    <div class="habit-title">Overview</div>
+                    <div class="habit-desc-header">Welcome back! Here is your progress at a glance.</div>
                 </div>
             </div>
         </div>
 
-        <div class="section-card" style="margin-bottom: 2rem; background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(6, 182, 212, 0.1)); border: 1px solid rgba(255,255,255,0.05); border-radius: 16px;">
-            <div style="font-size: 1rem; font-style: italic; color: var(--text); line-height: 1.6; text-align: center; padding: 1.5rem 2rem;">
-                "${quote.text}"
-                <div style="font-size: 0.75rem; font-style: normal; opacity: 0.6; margin-top: 1rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px;">— ${quote.author}</div>
-            </div>
-        </div>
-        
-        <div class="stats-grid" style="margin-bottom: 3rem;">
-            <div class="stat-card">
-                <div class="stat-icon-wrap" style="background:rgba(139, 92, 246, 0.2); color:#8b5cf6">📁</div>
-                <div class="stat-info">
-                    <div class="stat-value">${activeHabitsList.length}</div>
-                    <div class="stat-label">Active Habits</div>
+        <div style="display:flex; gap:2rem; margin-bottom: 3rem; padding-bottom: 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.05);">
+            <div style="flex:1;">
+                <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1.5px; color: var(--dim); margin-bottom: 0.5rem; font-weight: 700;">Daily Inspiration</div>
+                <div style="font-size: 1.1rem; color: var(--text); line-height: 1.5; font-style: italic; opacity: 0.9;">
+                    "${quote.text}"
+                    <span style="font-size: 0.8rem; font-style: normal; opacity: 0.5; margin-left: 10px; font-weight: 500;">— ${quote.author}</span>
                 </div>
             </div>
-            <div class="stat-card">
-                <div class="stat-icon-wrap" style="background:rgba(34, 197, 94, 0.2); color:#22c55e">📅</div>
-                <div class="stat-info">
-                    <div class="stat-value">${totalSessionsThisWeek}</div>
-                    <div class="stat-label">Sessions This Week</div>
+            <div style="display:flex; gap:2rem; align-items: center; border-left: 1px solid rgba(255,255,255,0.05); padding-left: 2rem;">
+                <div>
+                    <div style="font-size: 1.5rem; font-weight: 800; color: var(--accent);">${activeHabitsList.length}</div>
+                    <div style="font-size: 0.7rem; color: var(--dim); text-transform: uppercase; letter-spacing: 1px;">Habits</div>
                 </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon-wrap" style="background:rgba(245, 158, 11, 0.2); color:#f59e0b">⚡</div>
-                <div class="stat-info">
-                    <div class="stat-value">${totalSessionsAllTime}</div>
-                    <div class="stat-label">All-Time Logs</div>
+                <div>
+                    <div style="font-size: 1.5rem; font-weight: 800; color: var(--green);">${totalSessionsThisWeek}</div>
+                    <div style="font-size: 0.7rem; color: var(--dim); text-transform: uppercase; letter-spacing: 1px;">This Week</div>
+                </div>
+                <div>
+                    <div style="font-size: 1.5rem; font-weight: 800;">${totalSessionsAllTime}</div>
+                    <div style="font-size: 0.7rem; color: var(--dim); text-transform: uppercase; letter-spacing: 1px;">Total Logs</div>
                 </div>
             </div>
         </div>
         
         <div style="margin-top:2rem;">
-            <h3 style="margin-bottom:1.5rem; font-size:1.1rem; display:flex; align-items:center; gap:10px;">
-                <span style="opacity:0.6;">🔥</span> Quick Access
-            </h3>
-            <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap:1.2rem;">
+            <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap:1.5rem;">
                 ${habitCardsHTML}
             </div>
         </div>
