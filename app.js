@@ -462,9 +462,8 @@ function renderDashboard() {
                         </div>
                     </div>
                 </div>
-                <div style="margin-top:1rem; font-size:0.75rem; color:var(--dim); font-weight:500; display:flex; justify-content:space-between; align-items:center;">
-                    <span>${stats.total} total sessions</span>
-                    <span style="opacity:0.5; font-size:0.7rem;">VIEW DETAILS →</span>
+                <div style="margin-top:1rem; font-size:0.75rem; color:var(--dim); font-weight:500;">
+                    ${stats.total} total sessions
                 </div>
             </div>
         `;
