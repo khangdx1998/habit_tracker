@@ -1422,6 +1422,8 @@ function confirmDeleteHabit() {
                 renderSidebarTags();
                 submitBtn.disabled = false;
                 fireConfetti();
+}
+
 // ── AI Coach ──────────────────────────────────────────
 function renderCoachDashboard() {
     const main = document.getElementById('mainContent');
