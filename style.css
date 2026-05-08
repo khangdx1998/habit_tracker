@@ -473,3 +473,41 @@ th:hover { color: var(--text); }
     margin-top: 0.4rem;
     font-size: 0.9rem;
 }
+
+/* Collapsible Group Headers */
+.group-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    padding: 12px 8px 6px 8px;
+    margin-top: 1rem;
+    border-radius: 8px;
+    transition: background 0.2s;
+    user-select: none;
+}
+
+.group-header:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.group-header .chevron {
+    font-size: 0.7rem;
+    opacity: 0.4;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.group-header.collapsed .chevron {
+    transform: rotate(-90deg);
+}
+
+.group-items-container {
+    transition: all 0.3s ease;
+    overflow: hidden;
+}
+
+.group-items-container.collapsed {
+    max-height: 0;
+    opacity: 0;
+    pointer-events: none;
+}

@@ -9,6 +9,7 @@ let habits = [], sessions = [], tags = [], milestones = [], habitGroups = [], re
 let activeHabit = null, currentYear = new Date().getFullYear();
 let sortField = 'date', sortDir = 'desc';
 let showAllSessions = false;
+let collapsedGroups = new Set(); // Track which groups are collapsed
 
 // ── Persistence (Cloud) ──────────────────────────────────
 const loadData = async () => {
@@ -160,10 +161,19 @@ function renderSidebar() {
     groups.forEach(g => {
         const gHabits = activeHabitsList.filter(h => h.group_id === g.id);
         if (gHabits.length > 0) {
-            html += `<div class="sidebar-section-label" style="margin-top:1.5rem; display:flex; align-items:center; gap:6px;">
-                <span style="opacity:0.8">${g.icon}</span> ${g.name.toUpperCase()}
-            </div>`;
-            html += renderHabitItems(gHabits);
+            const isCollapsed = collapsedGroups.has(g.id);
+            html += `
+                <div class="group-header ${isCollapsed ? 'collapsed' : ''}" onclick="toggleGroup('${g.id}')">
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <span style="font-size:1.1rem;">${g.icon}</span>
+                        <span style="font-size:0.75rem; font-weight:700; letter-spacing:1px; color:var(--dim);">${g.name.toUpperCase()}</span>
+                    </div>
+                    <span class="chevron">▼</span>
+                </div>
+                <div class="group-items-container ${isCollapsed ? 'collapsed' : ''}">
+                    ${renderHabitItems(gHabits)}
+                </div>
+            `;
         }
     });
 
@@ -271,6 +281,15 @@ function selectReflections() {
     renderSidebar();
     renderMain();
     if (window.innerWidth <= 850) toggleSidebar();
+}
+
+function toggleGroup(groupId) {
+    if (collapsedGroups.has(groupId)) {
+        collapsedGroups.delete(groupId);
+    } else {
+        collapsedGroups.add(groupId);
+    }
+    renderSidebar();
 }
 
 function toggleSidebar() {
