@@ -462,3 +462,14 @@ th:hover { color: var(--text); }
 }
 .tag-opt:hover { background: rgba(255,255,255,0.05); }
 .tag-opt.selected { background: var(--accent); color: white; border-color: transparent; }
+
+.group-selector-dropdown {
+    width: 100%;
+    padding: 0.6rem 0.8rem;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border);
+    color: white;
+    margin-top: 0.4rem;
+    font-size: 0.9rem;
+}

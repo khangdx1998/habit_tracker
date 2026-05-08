@@ -5,7 +5,7 @@ const SB_KEY = 'REMOVED_KEY';
 // The global 'supabase' object comes from the CDN script
 const sbClient = supabase.createClient(SB_URL, SB_KEY);
 
-let habits = [], sessions = [], tags = [], milestones = [];
+let habits = [], sessions = [], tags = [], milestones = [], habitGroups = [], reflections = [], dailyQuotes = [];
 let activeHabit = null, currentYear = new Date().getFullYear();
 let sortField = 'date', sortDir = 'desc';
 let showAllSessions = false;
@@ -17,16 +17,20 @@ const loadData = async () => {
         const { data: sData, error: sErr } = await sbClient.from('sessions').select('*');
         const { data: tData, error: tErr } = await sbClient.from('tags').select('*');
         const { data: mData, error: mErr } = await sbClient.from('milestones').select('*');
+        const { data: gData, error: gErr } = await sbClient.from('habit_groups').select('*');
+        const { data: rData, error: rErr } = await sbClient.from('reflections').select('*');
+        const { data: qData, error: qErr } = await sbClient.from('daily_quotes').select('*');
         
         if (hErr || sErr) throw hErr || sErr;
 
-        // Map Supabase snake_case habit_id to habitId for JS compatibility
-        // Filter out soft-deleted habits
         habits = (hData || []).filter(h => !h.is_deleted);
         const validHabitIds = new Set(habits.map(h => h.id));
         sessions = (sData || []).filter(s => validHabitIds.has(s.habit_id) && !s.is_deleted).map(s => ({ ...s, habitId: s.habit_id }));
         tags = tData || [];
         milestones = mData || [];
+        habitGroups = gData || [];
+        reflections = rData || [];
+        dailyQuotes = qData || [];
 
         // Migration: If Cloud is empty but localStorage has data, push to Cloud
         const localHabits = JSON.parse(localStorage.getItem('tp_habits') || '[]');
@@ -128,24 +132,51 @@ function renderSidebar() {
     const nav = document.getElementById('habitNav');
     if (!nav) return;
     
-    const activeHabitsList = habits.filter(h => !h.is_archived);
-    const archivedHabitsList = habits.filter(h => h.is_archived);
-    
-    const dashboardLabel = document.getElementById('totalHabitsLabel');
-    if (dashboardLabel) dashboardLabel.textContent = `${activeHabitsList.length} active`;
-    
     const dashboardNav = document.getElementById('navDashboard');
     if (dashboardNav) dashboardNav.classList.toggle('active', activeHabit === 'dashboard');
     
     const tagsNav = document.getElementById('navTags');
     if (tagsNav) tagsNav.classList.toggle('active', activeHabit === 'tags');
     
-    let html = '';
+    const refNav = document.getElementById('navReflections');
+    if (refNav) refNav.classList.toggle('active', activeHabit === 'reflections');
     
-    html += activeHabitsList.map(h => {
+    let html = '';
+    const activeHabitsList = habits.filter(h => !h.is_deleted && !h.is_archived);
+    const archivedHabitsList = habits.filter(h => !h.is_deleted && h.is_archived);
+
+    // Grouping logic
+    const groups = habitGroups.length > 0 ? habitGroups : [];
+    const ungrouped = activeHabitsList.filter(h => !h.group_id || !groups.find(g => g.id === h.group_id));
+
+    if (ungrouped.length > 0) {
+        if (groups.length > 0) html += `<div class="sidebar-section-label" style="margin-top:1rem; opacity:0.6;">GENERAL</div>`;
+        html += renderHabitItems(ungrouped);
+    }
+
+    groups.forEach(g => {
+        const gHabits = activeHabitsList.filter(h => h.group_id === g.id);
+        if (gHabits.length > 0) {
+            html += `<div class="sidebar-section-label" style="margin-top:1.5rem; display:flex; align-items:center; gap:6px;">
+                <span style="opacity:0.8">${g.icon}</span> ${g.name.toUpperCase()}
+            </div>`;
+            html += renderHabitItems(gHabits);
+        }
+    });
+
+    if (archivedHabitsList.length > 0) {
+        html += `<div class="sidebar-section-label" style="margin-top: 1.5rem; color: var(--dim);">ARCHIVED</div>`;
+        html += renderHabitItems(archivedHabitsList, true);
+    }
+
+    nav.innerHTML = html;
+}
+
+function renderHabitItems(list, isArchived = false) {
+    return list.map(h => {
         const count = sessions.filter(s => s.habitId === h.id && s.status === 'Approved').length;
-        return `<div class="habit-nav-item ${activeHabit === h.id ? 'active' : ''}" onclick="selectHabit('${h.id}')">
-            <span class="habit-nav-icon">${h.icon}</span>
+        return `<div class="habit-nav-item ${activeHabit === h.id ? 'active' : ''}" onclick="selectHabit('${h.id}')" style="${isArchived ? 'opacity: 0.6' : ''}">
+            <span class="habit-nav-icon" style="${isArchived ? 'filter: grayscale(1)' : ''}">${h.icon}</span>
             <div class="habit-nav-info">
                 <span class="habit-nav-name">${h.name}</span>
                 <span class="habit-nav-count">${count} sessions</span>
@@ -156,30 +187,14 @@ function renderSidebar() {
             </div>
         </div>`;
     }).join('');
-
-    if (archivedHabitsList.length > 0) {
-        html += `<div class="sidebar-section-label" style="margin-top: 1.5rem; color: var(--dim);">ARCHIVED</div>`;
-        html += archivedHabitsList.map(h => {
-            const count = sessions.filter(s => s.habitId === h.id && s.status === 'Approved').length;
-            return `<div class="habit-nav-item ${activeHabit === h.id ? 'active' : ''}" onclick="selectHabit('${h.id}')" style="opacity: 0.6">
-                <span class="habit-nav-icon" style="filter: grayscale(1)">${h.icon}</span>
-                <div class="habit-nav-info">
-                    <span class="habit-nav-name" style="text-decoration: line-through">${h.name}</span>
-                    <span class="habit-nav-count">${count} sessions</span>
-                </div>
-                <div class="habit-nav-actions">
-                    <span class="edit-icon" onclick="event.stopPropagation(); openEditHabit('${h.id}')">⚙</span>
-                </div>
-            </div>`;
-        }).join('');
-    }
-    
-    nav.innerHTML = html;
 }
 
 function renderSidebarTags() {
     const el = document.getElementById('totalTagsLabel');
     if (el) el.textContent = `${tags.length} tags`;
+    
+    const rel = document.getElementById('totalReflectionsLabel');
+    if (rel) rel.textContent = `${reflections.length} logs`;
 }
 
 async function quickLog(habitId) {
@@ -248,6 +263,13 @@ function selectTags() {
     if (window.innerWidth <= 850) toggleSidebar(); 
 }
 
+function selectReflections() {
+    activeHabit = 'reflections';
+    renderSidebar();
+    renderMain();
+    if (window.innerWidth <= 850) toggleSidebar(); 
+}
+
 function toggleSidebar() {
     document.getElementById('sidebar').classList.toggle('open');
 }
@@ -260,6 +282,10 @@ function renderMain() {
     }
     if (activeHabit === 'tags') {
         renderTagsDashboard();
+        return;
+    }
+    if (activeHabit === 'reflections') {
+        renderReflectionsDashboard();
         return;
     }
     const h = habits.find(x => x.id === activeHabit);
@@ -382,29 +408,20 @@ function renderDashboard() {
     const main = document.getElementById('mainContent');
     const activeHabitsList = habits.filter(h => !h.is_archived);
     
-    if (activeHabitsList.length === 0) {
-        renderWelcome();
-        return;
-    }
+    if (activeHabitsList.length === 0) { renderWelcome(); return; }
+
+    const quote = dailyQuotes.length > 0 ? dailyQuotes[Math.floor(Math.random() * dailyQuotes.length)] : { text: "Excellence is not an act, but a habit.", author: "Aristotle" };
 
     let totalSessionsAllTime = 0;
     let totalSessionsThisWeek = 0;
-    
     const today = new Date();
-    const dow = today.getDay();
-    const off = dow === 0 ? 6 : dow - 1;
-    const startOfWeek = new Date(today);
-    startOfWeek.setDate(today.getDate() - off);
-    startOfWeek.setHours(0,0,0,0);
+    const dow = today.getDay(), off = dow === 0 ? 6 : dow - 1;
+    const startOfWeek = new Date(today); startOfWeek.setDate(today.getDate() - off); startOfWeek.setHours(0,0,0,0);
     
     activeHabitsList.forEach(h => {
         const ss = sessions.filter(s => s.habitId === h.id && s.status === 'Approved');
         totalSessionsAllTime += ss.length;
-        
-        ss.forEach(s => {
-            const sd = new Date(s.date);
-            if (sd >= startOfWeek) totalSessionsThisWeek++;
-        });
+        ss.forEach(s => { if (new Date(s.date) >= startOfWeek) totalSessionsThisWeek++; });
     });
 
     const habitCardsHTML = activeHabitsList.map(h => {
@@ -436,11 +453,16 @@ function renderDashboard() {
                 </div>
             </div>
         </div>
+
+        <div class="section-card" style="margin-bottom: 2rem; background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(6, 182, 212, 0.1)); border: 1px solid rgba(255,255,255,0.05); border-radius: 16px;">
+            <div style="font-size: 1rem; font-style: italic; color: var(--text); line-height: 1.6; text-align: center; padding: 1.5rem 2rem;">
+                "${quote.text}"
+                <div style="font-size: 0.75rem; font-style: normal; opacity: 0.6; margin-top: 1rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px;">— ${quote.author}</div>
+            </div>
+        </div>
         
         <div class="stats-grid" style="margin-bottom: 2rem;">
             <div class="stat-card">
-                <div class="stat-icon-wrap" style="background:rgba(99, 102, 241, 0.2); color:#6366f1">📋</div>
-                <div class="stat-info">
                     <div class="stat-value">${activeHabitsList.length}</div>
                     <div class="stat-label">Active Habits</div>
                 </div>
@@ -696,12 +718,13 @@ function renderAchievements(habit, stats) {
     if (!el) return;
     el.innerHTML = defs.map(a => {
         const earned = a.check(stats);
-        return `<div class="achievement-item ${earned?'earned':'locked'}"><span class="achievement-emoji">${a.icon}</span><div class="achievement-info"><div class="achievement-title">${a.title}</div><div class="achievement-desc">${a.desc}</div></div></div>`;
+            <div class="achievement-item ${earned?'earned':'locked'}"><span class="achievement-emoji">${a.icon}</span><div class="achievement-info"><div class="achievement-title">${a.title}</div><div class="achievement-desc">${a.desc}</div></div></div>`;
     }).join('');
 }
 
 // ── Add Habit ──────────────────────────────────────────
 function openAddHabitModal() { 
+    initGroupDropdowns();
     openModal('addHabitModal'); 
     document.getElementById('habitName').value=''; 
     document.getElementById('habitUnit').value=''; 
@@ -712,6 +735,14 @@ function openAddHabitModal() {
     document.querySelectorAll('#iconPicker .icon-opt').forEach((o,i)=>o.classList.toggle('selected',i===0));
     document.querySelectorAll('#colorPicker .color-opt').forEach((o,i)=>o.classList.toggle('selected',i===0));
     setTimeout(()=>document.getElementById('habitName').focus(),100); 
+}
+
+function initGroupDropdowns() {
+    const html = `<option value="">No Group</option>` + habitGroups.map(g => `<option value="${g.id}">${g.icon} ${g.name}</option>`).join('');
+    ['habitGroup', 'editHabitGroup'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = html;
+    });
 }
 
 async function handleAddHabit(e) {
@@ -730,7 +761,8 @@ async function handleAddHabit(e) {
         id, name, icon, unit, description, color,
         goal_type, goal_target: goal_target ? parseFloat(goal_target) : null,
         is_archived: false,
-        is_deleted: false
+        is_deleted: false,
+        group_id: document.getElementById('habitGroup').value || null
     });
     await loadData(); activeHabit = id; closeModal('addHabitModal'); renderSidebar(); renderMain();
 }
@@ -745,9 +777,11 @@ function openEditHabit(id) {
     document.getElementById('editHabitGoalTarget').value = h.goal_target || '';
     document.getElementById('archiveHabitBtn').textContent = h.is_archived ? 'Unarchive' : 'Archive';
     // Set Pickers
-    document.querySelectorAll('#editIconPicker .icon-opt').forEach(o => o.classList.toggle('selected', o.dataset.icon === h.icon));
     document.querySelectorAll('#editColorPicker .color-opt').forEach(o => o.classList.toggle('selected', o.dataset.color === h.color));
     document.getElementById('editHabitModal').dataset.habitId = id;
+    
+    initGroupDropdowns();
+    document.getElementById('editHabitGroup').value = h.group_id || '';
     
     renderEditMilestones(id);
     openModal('editHabitModal');
@@ -763,10 +797,12 @@ async function handleEditHabit(e) {
     const color = document.querySelector('#editColorPicker .color-opt.selected')?.dataset.color;
     const goal_type = document.getElementById('editHabitGoalType').value;
     const goal_target = document.getElementById('editHabitGoalTarget').value;
+    const group_id = document.getElementById('editHabitGroup').value || null;
     
     await sbClient.from('habits').update({ 
         name, icon, unit, description, color,
-        goal_type, goal_target: goal_target ? parseFloat(goal_target) : null
+        goal_type, goal_target: goal_target ? parseFloat(goal_target) : null,
+        group_id
     }).eq('id', id);
     await loadData(); closeModal('editHabitModal'); renderSidebar(); renderMain();
 }
@@ -1086,30 +1122,84 @@ function renderTagsDashboard() {
             <div class="habit-title-group">
                 <span class="habit-title-icon">🏷️</span>
                 <div>
-                    <div class="habit-title">Tags Management</div>
-                    <div class="habit-desc-header">Create and organize tags for your sessions</div>
+                    <div class="habit-title">Tags & Groups</div>
+                    <div class="habit-desc-header">Organize your habits and sessions</div>
                 </div>
             </div>
         </div>
         
-        <div class="section-card" style="max-width: 500px;">
-            <div class="form-group">
-                <label>Create New Tag</label>
-                <div style="display:flex; gap:8px;">
-                    <input type="text" id="newTagName" placeholder="Tag name..." style="flex:1">
-                    <button class="btn btn-primary" onclick="handleAddTag()" style="padding: 0 16px;">Add Tag</button>
+        <div class="two-col">
+            <section class="section-card">
+                <span class="section-title">Session Tags</span>
+                <div class="form-group" style="margin-top:1rem;">
+                    <label>Create New Tag</label>
+                    <div style="display:flex; gap:8px;">
+                        <input type="text" id="newTagName" placeholder="Tag name..." style="flex:1">
+                        <button class="btn btn-primary" onclick="handleAddTag()" style="padding: 0 16px;">Add</button>
+                    </div>
                 </div>
-            </div>
-            
-            <div class="form-group" style="margin-top:2rem;">
-                <label>Existing Tags (${tags.length})</label>
-                <div id="tagManagerList" style="display:flex; flex-direction:column; gap:10px; margin-top:10px;">
-                    <!-- Tags injected here -->
+                <div id="tagManagerList" style="display:flex; flex-direction:column; gap:10px; margin-top:20px;"></div>
+            </section>
+
+            <section class="section-card">
+                <span class="section-title">Habit Groups</span>
+                <div class="form-group" style="margin-top:1rem;">
+                    <label>Create New Group</label>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                        <input type="text" id="newGroupName" placeholder="Group name..." style="flex:2; min-width:150px;">
+                        <input type="text" id="newGroupIcon" placeholder="📁" style="flex:0.5; min-width:60px; text-align:center;">
+                        <button class="btn btn-primary" onclick="handleAddGroup()" style="flex:1; min-width:80px;">Add</button>
+                    </div>
                 </div>
-            </div>
+                <div id="groupManagerList" style="display:flex; flex-direction:column; gap:10px; margin-top:20px;"></div>
+            </section>
         </div>
     `;
     renderTagManager();
+    renderGroupManager();
+}
+
+function renderGroupManager() {
+    const list = document.getElementById('groupManagerList');
+    if (!list) return;
+    list.innerHTML = habitGroups.map(g => {
+        const count = habits.filter(h => h.group_id === g.id).length;
+        return `
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:12px; background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:12px;">
+                <div style="display:flex; align-items:center; gap:12px;">
+                    <span style="font-size:1.4rem;">${g.icon}</span>
+                    <div style="display:flex; flex-direction:column;">
+                        <span style="font-size:0.9rem; font-weight:700;">${g.name}</span>
+                        <span style="font-size:0.7rem; color:var(--dim);">${count} habits in this group</span>
+                    </div>
+                </div>
+                <button class="action-btn" onclick="handleDeleteGroup('${g.id}')" style="color:var(--red); border-color:transparent;">✕</button>
+            </div>
+        `;
+    }).join('');
+    if (habitGroups.length === 0) list.innerHTML = '<div style="text-align:center; color:var(--dim); padding:2rem;">No groups yet.</div>';
+}
+
+async function handleAddGroup() {
+    const nameEl = document.getElementById('newGroupName');
+    const iconEl = document.getElementById('newGroupIcon');
+    const name = nameEl.value.trim();
+    const icon = iconEl.value.trim() || '📁';
+    if (!name) return;
+    
+    await sbClient.from('habit_groups').insert({ id: 'g_'+Date.now(), name, icon });
+    nameEl.value = ''; iconEl.value = '';
+    await loadData();
+    renderTagsDashboard();
+    renderSidebar();
+}
+
+async function handleDeleteGroup(id) {
+    if (!confirm('Delete this group? Habits will become ungrouped.')) return;
+    await sbClient.from('habit_groups').delete().eq('id', id);
+    await loadData();
+    renderTagsDashboard();
+    renderSidebar();
 }
 
 function renderTagManager() {
@@ -1197,4 +1287,123 @@ async function handleDeleteMilestone(id) {
     await loadData();
     renderEditMilestones(habitId);
     renderMain();
+}
+
+// ── Reflections Dashboard ──────────────────────────────
+function renderReflectionsDashboard() {
+    const main = document.getElementById('mainContent');
+    const today = fmtDate(new Date());
+    const existing = reflections.find(r => r.date === today);
+
+    main.innerHTML = `
+        <div class="habit-header">
+            <div class="habit-title-group">
+                <span class="habit-title-icon">📔</span>
+                <div>
+                    <div class="habit-title">Daily Reflections</div>
+                    <div class="habit-desc-header">Track your mindset, mood, and daily thoughts</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="two-col">
+            <section class="section-card">
+                <span class="section-title">${existing ? 'Update Today\'s Reflection' : 'Log Today\'s Reflection'}</span>
+                <form id="reflectionForm" onsubmit="handleReflectionSubmit(event)" style="margin-top:1.5rem; display:flex; flex-direction:column; gap:1.5rem;">
+                    <div class="form-group">
+                        <label>How is your mood today?</label>
+                        <div class="icon-picker" id="moodPicker">
+                            <div class="icon-opt ${existing?.mood===1?'selected':''}" data-val="1">😢</div>
+                            <div class="icon-opt ${existing?.mood===2?'selected':''}" data-val="2">😕</div>
+                            <div class="icon-opt ${existing?.mood===3?'selected':''}" data-val="3">😐</div>
+                            <div class="icon-opt ${existing?.mood===4?'selected':''}" data-val="4">🙂</div>
+                            <div class="icon-opt ${existing?.mood===5?'selected':''}" data-val="5">🤩</div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Energy Level</label>
+                        <div class="icon-picker" id="energyPicker">
+                            <div class="icon-opt ${existing?.energy===1?'selected':''}" data-val="1">🌑</div>
+                            <div class="icon-opt ${existing?.energy===2?'selected':''}" data-val="2">🌘</div>
+                            <div class="icon-opt ${existing?.energy===3?'selected':''}" data-val="3">🌗</div>
+                            <div class="icon-opt ${existing?.energy===4?'selected':''}" data-val="4">🌖</div>
+                            <div class="icon-opt ${existing?.energy===5?'selected':''}" data-val="5">🌕</div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Notes / Journal</label>
+                        <textarea id="reflectionNotes" rows="4" placeholder="How was your day? What's on your mind?">${existing?.journal_text || ''}</textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width:100%">${existing ? 'Update' : 'Save Reflection'}</button>
+                </form>
+            </section>
+
+            <section class="section-card">
+                <span class="section-title">History</span>
+                <div id="reflectionHistory" style="margin-top:1.5rem; display:flex; flex-direction:column; gap:1rem; max-height:600px; overflow-y:auto; padding-right:8px;">
+                    <!-- History injected here -->
+                </div>
+            </section>
+        </div>
+    `;
+
+    // Init picker events
+    document.querySelectorAll('#moodPicker .icon-opt, #energyPicker .icon-opt').forEach(opt => {
+        opt.onclick = () => {
+            opt.parentElement.querySelectorAll('.icon-opt').forEach(o => o.classList.remove('selected'));
+            opt.classList.add('selected');
+        };
+    });
+
+    renderReflectionHistory();
+}
+
+function renderReflectionHistory() {
+    const list = document.getElementById('reflectionHistory');
+    if (!list) return;
+    const sorted = [...reflections].sort((a,b) => b.date.localeCompare(a.date));
+    
+    list.innerHTML = sorted.map(r => {
+        const moodIcons = ['😢','😕','😐','🙂','🤩'];
+        const energyIcons = ['🌑','🌘','🌗','🌖','🌕'];
+        return `
+            <div style="padding:1rem; background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:12px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+                    <span style="font-weight:700; font-size:0.9rem;">${r.date}</span>
+                    <div style="display:flex; gap:8px; font-size:1.1rem;">
+                        <span title="Mood">${moodIcons[r.mood-1]}</span>
+                        <span title="Energy">${energyIcons[r.energy-1]}</span>
+                    </div>
+                </div>
+                <div style="font-size:0.85rem; color:var(--dim); line-height:1.5; white-space:pre-wrap;">${r.journal_text || 'No notes.'}</div>
+            </div>
+        `;
+    }).join('');
+    if (reflections.length === 0) list.innerHTML = '<div style="text-align:center; color:var(--dim); padding:2rem;">No history yet.</div>';
+}
+
+async function handleReflectionSubmit(e) {
+    e.preventDefault();
+    const mood = document.querySelector('#moodPicker .icon-opt.selected')?.dataset.val;
+    const energy = document.querySelector('#energyPicker .icon-opt.selected')?.dataset.val;
+    const text = document.getElementById('reflectionNotes').value.trim();
+    const today = fmtDate(new Date());
+
+    if (!mood || !energy) { showAlert("Wait", "Please select both mood and energy level."); return; }
+
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+
+    const existing = reflections.find(r => r.date === today);
+    if (existing) {
+        await sbClient.from('reflections').update({ mood, energy, journal_text: text }).eq('date', today);
+    } else {
+        await sbClient.from('reflections').insert({ id: 'r_'+Date.now(), date: today, mood, energy, journal_text: text });
+    }
+
+    await loadData();
+    renderReflectionsDashboard();
+    renderSidebarTags();
+    submitBtn.disabled = false;
+    fireConfetti();
 }

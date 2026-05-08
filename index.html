@@ -52,6 +52,13 @@
                         <span class="habit-nav-count" id="totalTagsLabel"></span>
                     </div>
                 </div>
+                <div class="habit-nav-item" id="navReflections" onclick="selectReflections()">
+                    <span class="habit-nav-icon">📔</span>
+                    <div class="habit-nav-info">
+                        <span class="habit-nav-name" style="font-weight: 800; color: #a78bfa;">Reflections</span>
+                        <span class="habit-nav-count" id="totalReflectionsLabel"></span>
+                    </div>
+                </div>
             </nav>
             <div class="sidebar-section-label">HABITS</div>
             <nav class="habit-nav" id="habitNav"></nav>
@@ -340,6 +347,10 @@
                 <div class="form-group">
                     <label for="editHabitDesc">Description</label>
                     <textarea id="editHabitDesc" rows="2"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="editHabitGroup">Group (Optional)</label>
+                    <select id="editHabitGroup" class="group-selector-dropdown"></select>
                 </div>
                 <div class="form-group">
                     <label>Color</label>
