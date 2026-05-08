@@ -45,6 +45,13 @@
                         <span class="habit-nav-count" id="totalHabitsLabel"></span>
                     </div>
                 </div>
+                <div class="habit-nav-item" id="navTags" onclick="selectTags()">
+                    <span class="habit-nav-icon">🏷️</span>
+                    <div class="habit-nav-info">
+                        <span class="habit-nav-name" style="font-weight: 800; color: #a78bfa;">Tags</span>
+                        <span class="habit-nav-count" id="totalTagsLabel"></span>
+                    </div>
+                </div>
             </nav>
             <div class="sidebar-section-label">HABITS</div>
             <nav class="habit-nav" id="habitNav"></nav>
@@ -53,12 +60,6 @@
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                 New Habit
             </button>
-
-            <div class="sidebar-section-label" style="display:flex; justify-content:space-between; align-items:center;">
-                TAGS
-                <span onclick="openManageTagsModal()" style="cursor:pointer; font-size:0.8rem; opacity:0.6; text-transform:none; letter-spacing:normal;">Edit</span>
-            </div>
-            <div id="sidebarTags" style="padding: 0 1rem 1rem; display:flex; flex-wrap:wrap; gap:4px;"></div>
 
             <div class="sidebar-bottom">
                 <button class="sidebar-action" onclick="exportData()" title="Export">
@@ -378,29 +379,6 @@
                 <!-- Media injected here -->
             </div>
             <div id="mediaNotes" style="margin-top:1.2rem; padding:1rem; background:rgba(255,255,255,0.03); border-radius:8px; color:var(--dim); font-size:0.9rem;"></div>
-        </div>
-    </div>
-
-    <!-- ── Manage Tags Modal ────────────────────────── -->
-    <div class="modal-overlay" id="manageTagsModal">
-        <div class="modal-card modal-sm">
-            <div class="modal-header">
-                <h2>Manage Tags</h2>
-                <button class="close-btn" onclick="closeModal('manageTagsModal')">&times;</button>
-            </div>
-            <div class="form-group">
-                <label>Create New Tag</label>
-                <div style="display:flex; gap:8px;">
-                    <input type="text" id="newTagName" placeholder="Tag name..." style="flex:1">
-                    <button class="btn btn-primary" onclick="handleAddTag()" style="padding: 0 12px;">Add</button>
-                </div>
-            </div>
-            <div class="form-group" style="margin-top:1.5rem;">
-                <label>Existing Tags</label>
-                <div id="tagManagerList" style="display:flex; flex-direction:column; gap:8px; margin-top:8px;">
-                    <!-- Tags injected here -->
-                </div>
-            </div>
         </div>
     </div>
 

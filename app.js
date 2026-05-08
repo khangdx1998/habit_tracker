@@ -135,6 +135,9 @@ function renderSidebar() {
     const dashboardNav = document.getElementById('navDashboard');
     if (dashboardNav) dashboardNav.classList.toggle('active', activeHabit === 'dashboard');
     
+    const tagsNav = document.getElementById('navTags');
+    if (tagsNav) tagsNav.classList.toggle('active', activeHabit === 'tags');
+    
     let html = '';
     
     html += activeHabitsList.map(h => {
@@ -173,9 +176,8 @@ function renderSidebar() {
 }
 
 function renderSidebarTags() {
-    const el = document.getElementById('sidebarTags');
-    if (!el) return;
-    el.innerHTML = tags.map(t => `<span class="tag-pill" style="border: 1px solid rgba(255,255,255,0.1); font-size:0.65rem;">${t.name}</span>`).join('');
+    const el = document.getElementById('totalTagsLabel');
+    if (el) el.textContent = `${tags.length} tags`;
 }
 
 async function quickLog(habitId) {
@@ -235,6 +237,13 @@ function selectDashboard() {
     if (window.innerWidth <= 850) toggleSidebar(); 
 }
 
+function selectTags() {
+    activeHabit = 'tags';
+    renderSidebar();
+    renderMain();
+    if (window.innerWidth <= 850) toggleSidebar(); 
+}
+
 function toggleSidebar() {
     document.getElementById('sidebar').classList.toggle('open');
 }
@@ -243,6 +252,10 @@ function toggleSidebar() {
 function renderMain() {
     if (activeHabit === 'dashboard') {
         renderDashboard();
+        return;
+    }
+    if (activeHabit === 'tags') {
+        renderTagsDashboard();
         return;
     }
     const h = habits.find(x => x.id === activeHabit);
@@ -1041,20 +1054,58 @@ function showAlert(title, desc) {
 
 // ── Tag Management ─────────────────────────────────────
 function openManageTagsModal() {
+    selectTags();
+}
+
+function renderTagsDashboard() {
+    const main = document.getElementById('mainContent');
+    main.innerHTML = `
+        <div class="habit-header">
+            <div class="habit-title-group">
+                <span class="habit-title-icon">🏷️</span>
+                <div>
+                    <div class="habit-title">Tags Management</div>
+                    <div class="habit-desc-header">Create and organize tags for your sessions</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="section-card" style="max-width: 500px;">
+            <div class="form-group">
+                <label>Create New Tag</label>
+                <div style="display:flex; gap:8px;">
+                    <input type="text" id="newTagName" placeholder="Tag name..." style="flex:1">
+                    <button class="btn btn-primary" onclick="handleAddTag()" style="padding: 0 16px;">Add Tag</button>
+                </div>
+            </div>
+            
+            <div class="form-group" style="margin-top:2rem;">
+                <label>Existing Tags (${tags.length})</label>
+                <div id="tagManagerList" style="display:flex; flex-direction:column; gap:10px; margin-top:10px;">
+                    <!-- Tags injected here -->
+                </div>
+            </div>
+        </div>
+    `;
     renderTagManager();
-    openModal('manageTagsModal');
 }
 
 function renderTagManager() {
     const list = document.getElementById('tagManagerList');
     if (!list) return;
-    list.innerHTML = tags.map(t => `
-        <div style="display:flex; justify-content:space-between; align-items:center; padding:8px; background:rgba(255,255,255,0.03); border-radius:8px;">
-            <span style="font-size:0.85rem; font-weight:600;">${t.name}</span>
-            <button class="action-btn" onclick="handleDeleteTag('${t.id}')" style="color:var(--red); border-color:rgba(239,68,68,0.2);">✕</button>
-        </div>
-    `).join('');
-    if (tags.length === 0) list.innerHTML = '<div style="text-align:center; color:var(--dim); font-size:0.8rem; padding:1rem;">No tags yet</div>';
+    list.innerHTML = tags.map(t => {
+        const usageCount = sessions.filter(s => (s.tag_ids || []).includes(t.id)).length;
+        return `
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:12px; background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:12px;">
+                <div style="display:flex; flex-direction:column;">
+                    <span style="font-size:0.9rem; font-weight:700; color:var(--text);">${t.name}</span>
+                    <span style="font-size:0.7rem; color:var(--dim);">${usageCount} sessions using this tag</span>
+                </div>
+                <button class="action-btn" onclick="handleDeleteTag('${t.id}')" style="color:var(--red); border-color:rgba(239,68,68,0.2); padding:6px 10px;">✕ Delete</button>
+            </div>
+        `;
+    }).join('');
+    if (tags.length === 0) list.innerHTML = '<div style="text-align:center; color:var(--dim); font-size:0.85rem; padding:2rem;">No tags created yet. Start by adding one above!</div>';
 }
 
 async function handleAddTag() {
@@ -1066,15 +1117,14 @@ async function handleAddTag() {
     await sbClient.from('tags').insert({ id, name });
     input.value = '';
     await loadData();
-    renderTagManager();
+    if (activeHabit === 'tags') renderTagsDashboard();
     renderSidebarTags();
 }
 
 async function handleDeleteTag(id) {
     if (!confirm('Delete this tag? It will be removed from all sessions.')) return;
     await sbClient.from('tags').delete().eq('id', id);
-    // Note: In a real app, you'd also want to remove this ID from session tag_ids arrays
     await loadData();
-    renderTagManager();
+    if (activeHabit === 'tags') renderTagsDashboard();
     renderSidebarTags();
 }
