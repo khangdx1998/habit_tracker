@@ -136,6 +136,9 @@ function renderSidebar() {
     const nav = document.getElementById('habitNav');
     if (!nav) return;
 
+    const coachNav = document.getElementById('navCoach');
+    if (coachNav) coachNav.classList.toggle('active', activeHabit === 'coach');
+
     const dashboardNav = document.getElementById('navDashboard');
     if (dashboardNav) dashboardNav.classList.toggle('active', activeHabit === 'dashboard');
 
@@ -305,8 +308,9 @@ function renderMain() {
     if (activeHabit === 'tags') {
         renderTagsDashboard();
         return;
-    }
-    if (activeHabit === 'reflections') {
+    } else if (activeHabit === 'coach') {
+        renderCoachDashboard();
+    } else if (activeHabit === 'reflections') {
         renderReflectionsDashboard();
         return;
     }
@@ -1418,4 +1422,126 @@ function confirmDeleteHabit() {
                 renderSidebarTags();
                 submitBtn.disabled = false;
                 fireConfetti();
+// ── AI Coach ──────────────────────────────────────────
+function renderCoachDashboard() {
+    const main = document.getElementById('mainContent');
+    if (!main) return;
+
+    // --- Intelligence Engine ---
+    const moodCompletion = { 1: {t:0,c:0}, 2: {t:0,c:0}, 3: {t:0,c:0}, 4: {t:0,c:0}, 5: {t:0,c:0} };
+    const energyCompletion = { 1: {t:0,c:0}, 2: {t:0,c:0}, 3: {t:0,c:0}, 4: {t:0,c:0}, 5: {t:0,c:0} };
+    
+    // Group reflections by date for quick lookup
+    const refMap = {};
+    reflections.forEach(r => refMap[r.date] = r);
+
+    // Analyze last 30 days
+    const activeHabitsList = habits.filter(h => !h.is_deleted && !h.is_archived);
+    activeHabitsList.forEach(h => {
+        const hSessions = sessions.filter(s => s.habitId === h.id && s.status === 'Approved');
+        hSessions.forEach(s => {
+            const ref = refMap[s.date];
+            if (ref) {
+                if (ref.mood) { moodCompletion[ref.mood].t++; moodCompletion[ref.mood].c++; }
+                if (ref.energy) { energyCompletion[ref.energy].t++; energyCompletion[ref.energy].c++; }
+            }
+        });
+    });
+
+    // Find Peak State
+    let peakMood = 0, maxMoodRate = 0;
+    Object.keys(moodCompletion).forEach(m => {
+        const rate = moodCompletion[m].t > 0 ? (moodCompletion[m].c / moodCompletion[m].t) : 0;
+        if (rate >= maxMoodRate) { maxMoodRate = rate; peakMood = m; }
+    });
+
+    const insights = [];
+    if (peakMood > 0) insights.push(`You are most consistent when your <strong>Mood is ${peakMood}/5</strong>. Try to tackle your hardest habits when you feel this way!`);
+    
+    // Check for "Slip" signals
+    const slipping = activeHabitsList.filter(h => {
+        const hSessions = sessions.filter(s => s.habitId === h.id && s.status === 'Approved');
+        if (hSessions.length === 0) return false;
+        const lastDate = new Date(hSessions.sort((a,b) => b.date.localeCompare(a.date))[0].date);
+        const diff = (new Date() - lastDate) / (1000 * 60 * 60 * 24);
+        return diff > 3;
+    });
+
+    if (slipping.length > 0) {
+        const hSessions = sessions.filter(s => s.habitId === slipping[0].id).sort((a,b) => b.date.localeCompare(a.date));
+        const lastDateStr = hSessions.length > 0 ? hSessions[hSessions.length - 1].date : null;
+        const days = lastDateStr ? Math.floor((new Date() - new Date(lastDateStr)) / (1000*60*60*24)) : '?';
+        insights.push(`Warning: <strong>${slipping[0].name}</strong> hasn't been logged in ${days} days. Don't let the streak die!`);
+    }
+
+    if (insights.length === 0) insights.push("I'm still gathering data to find patterns. Keep logging your habits and reflections!");
+
+    main.innerHTML = `
+        <div class="habit-header" style="margin-bottom: 2.5rem;">
+            <div class="habit-title-group">
+                <span class="habit-title-icon">🤖</span>
+                <div>
+                    <div class="habit-title">AI Growth Coach</div>
+                    <div class="habit-desc-header">Personalized insights based on your data patterns.</div>
+                </div>
+            </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:2rem;">
+            <section class="section-card" style="border-left: 4px solid var(--accent);">
+                <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1.5px; color: var(--accent); margin-bottom: 1rem; font-weight: 800;">Coach's Report</div>
+                <div style="display:flex; flex-direction:column; gap:1.5rem;">
+                    ${insights.map(ins => `
+                        <div style="display:flex; gap:15px; align-items:flex-start;">
+                            <span style="font-size:1.2rem;">💡</span>
+                            <div style="font-size:1rem; line-height:1.6; opacity:0.9;">${ins}</div>
+                        </div>
+                    `).join('')}
+                </div>
+            </section>
+
+            <section class="section-card">
+                <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1.5px; color: var(--dim); margin-bottom: 1rem; font-weight: 800;">Momentum Score</div>
+                <div style="text-align:center; padding:1rem 0;">
+                    <div style="font-size:3.5rem; font-weight:900; color:white;">${Math.min(100, (activeHabitsList.length * 5) + (totalSessionsThisWeek * 2))}</div>
+                    <div style="font-size:0.8rem; color:var(--dim); margin-top:0.5rem;">Based on recent activity</div>
+                </div>
+                <div style="height:8px; background:rgba(255,255,255,0.05); border-radius:4px; margin-top:1rem; overflow:hidden;">
+                    <div style="width:${Math.min(100, (activeHabitsList.length * 5) + (totalSessionsThisWeek * 2))}%; height:100%; background:linear-gradient(90deg, var(--accent), #d946ef);"></div>
+                </div>
+            </section>
+        </div>
+
+        <div style="margin-top:2rem;">
+            <h3 style="margin-bottom:1.5rem; font-size:1.1rem; opacity:0.6;">Performance Metrics</h3>
+            <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap:1.5rem;">
+                <div class="section-card" style="padding:1.5rem;">
+                    <div style="font-size:0.8rem; color:var(--dim); margin-bottom:0.5rem;">Mood vs. Success</div>
+                    <div style="display:flex; align-items:flex-end; gap:8px; height:100px;">
+                        ${[1,2,3,4,5].map(m => {
+                            const rate = moodCompletion[m].t > 0 ? (moodCompletion[m].c / moodCompletion[m].t) : 0;
+                            return `<div style="flex:1; background:var(--accent); height:${rate * 100}%; border-radius:4px 4px 0 0; min-height:2px; opacity:${0.2 + (m * 0.15)}"></div>`;
+                        }).join('')}
+                    </div>
+                    <div style="display:flex; justify-content:space-between; margin-top:0.5rem; font-size:0.7rem; color:var(--dim);">
+                        <span>LOW MOOD</span>
+                        <span>HIGH MOOD</span>
+                    </div>
+                </div>
+                <div class="section-card" style="padding:1.5rem;">
+                    <div style="font-size:0.8rem; color:var(--dim); margin-bottom:0.5rem;">Energy vs. Success</div>
+                    <div style="display:flex; align-items:flex-end; gap:8px; height:100px;">
+                        ${[1,2,3,4,5].map(e => {
+                            const rate = energyCompletion[e].t > 0 ? (energyCompletion[e].c / energyCompletion[e].t) : 0;
+                            return `<div style="flex:1; background:var(--green); height:${rate * 100}%; border-radius:4px 4px 0 0; min-height:2px; opacity:${0.2 + (e * 0.15)}"></div>`;
+                        }).join('')}
+                    </div>
+                    <div style="display:flex; justify-content:space-between; margin-top:0.5rem; font-size:0.7rem; color:var(--dim);">
+                        <span>LOW ENERGY</span>
+                        <span>HIGH ENERGY</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
 }
