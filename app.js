@@ -15,14 +15,17 @@ const loadData = async () => {
     try {
         const { data: hData, error: hErr } = await sbClient.from('habits').select('*');
         const { data: sData, error: sErr } = await sbClient.from('sessions').select('*');
-        const { data: tData, error: tErr } = await sbClient.from('tags').select('*');
-        const { data: mData, error: mErr } = await sbClient.from('milestones').select('*');
-        const { data: gData, error: gErr } = await sbClient.from('habit_groups').select('*');
-        const { data: rData, error: rErr } = await sbClient.from('reflections').select('*');
-        const { data: qData, error: qErr } = await sbClient.from('daily_quotes').select('*');
         
-        if (hErr || sErr) throw hErr || sErr;
+        // Log errors but don't crash if tables/columns are missing
+        if (hErr) console.warn("Habits table error:", hErr.message);
+        if (sErr) console.warn("Sessions table error:", sErr.message);
 
+        const { data: tData } = await sbClient.from('tags').select('*');
+        const { data: mData } = await sbClient.from('milestones').select('*');
+        const { data: gData } = await sbClient.from('habit_groups').select('*');
+        const { data: rData } = await sbClient.from('reflections').select('*');
+        const { data: qData } = await sbClient.from('daily_quotes').select('*');
+        
         habits = (hData || []).filter(h => !h.is_deleted);
         const validHabitIds = new Set(habits.map(h => h.id));
         sessions = (sData || []).filter(s => validHabitIds.has(s.habit_id) && !s.is_deleted).map(s => ({ ...s, habitId: s.habit_id }));
@@ -463,28 +466,20 @@ function renderDashboard() {
         
         <div class="stats-grid" style="margin-bottom: 2rem;">
             <div class="stat-card">
-                    <div class="stat-value">${activeHabitsList.length}</div>
-                    <div class="stat-label">Active Habits</div>
-                </div>
+                <div class="stat-value" style="color:var(--green)">${activeHabitsList.length}</div>
+                <div class="stat-label">Active Habits</div>
             </div>
             <div class="stat-card">
-                <div class="stat-icon-wrap" style="background:rgba(34, 197, 94, 0.2); color:#22c55e">📅</div>
-                <div class="stat-info">
-                    <div class="stat-value">${totalSessionsThisWeek}</div>
-                    <div class="stat-label">Sessions This Week</div>
-                </div>
+                <div class="stat-value" style="color:var(--accent)">${totalSessionsThisWeek}</div>
+                <div class="stat-label">Sessions This Week</div>
             </div>
             <div class="stat-card">
-                <div class="stat-icon-wrap" style="background:rgba(245, 158, 11, 0.2); color:#f59e0b">⚡</div>
-                <div class="stat-info">
-                    <div class="stat-value">${totalSessionsAllTime}</div>
-                    <div class="stat-label">All-Time Logs</div>
-                </div>
+                <div class="stat-value">${totalSessionsAllTime}</div>
+                <div class="stat-label">All-Time Sessions</div>
             </div>
         </div>
-        
-        <h3 style="margin-bottom:1rem; font-size:1.1rem;">Active Habits</h3>
-        <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap:1rem;">
+
+        <div class="stats-grid">
             ${habitCardsHTML}
         </div>
     `;
