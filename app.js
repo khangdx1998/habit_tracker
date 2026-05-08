@@ -673,18 +673,24 @@ function doSort(f) { if(sortField===f) sortDir=sortDir==='asc'?'desc':'asc'; els
 function renderAchievements(habit, stats) {
     const habitMilestones = milestones.filter(m => m.habit_id === habit.id);
     
-    // Default fallback achievements if no custom milestones exist
-    const defs = habitMilestones.length > 0 ? habitMilestones.map(m => ({
-        title: m.title,
-        desc: `Reach ${m.target_count} ${habit.goal_type==='value'?(habit.unit||'units'):'sessions'}`,
-        icon: m.icon || '🎯',
-        check: s => (habit.goal_type === 'value' ? stats.bestValue : s.total) >= m.target_count
-    })) : [
+    // Standard achievements that always exist
+    const standardDefs = [
         { title:"First Step", desc:"Log 1 session", icon:"🌱", check: s=>s.total>=1 },
         { title:"Week Warrior", desc:"7-day streak", icon:"🔥", check: s=>s.longest>=7 },
         { title:"Unstoppable", desc:"30-day streak", icon:"💎", check: s=>s.longest>=30 },
         { title:"Centurion", desc:"100 sessions", icon:"👑", check: s=>s.total>=100 },
     ];
+
+    // Custom milestones from the database
+    const customDefs = habitMilestones.map(m => ({
+        title: m.title,
+        desc: `Reach ${m.target_count} ${habit.goal_type==='value'?(habit.unit||'units'):'sessions'}`,
+        icon: m.icon || '🎯',
+        check: s => (habit.goal_type === 'value' ? stats.bestValue : s.total) >= m.target_count
+    }));
+
+    // Combine both
+    const defs = [...standardDefs, ...customDefs];
 
     const el = document.getElementById('achieveGrid');
     if (!el) return;
