@@ -721,7 +721,7 @@ function renderAchievements(habit, stats) {
     if (!el) return;
     el.innerHTML = defs.map(a => {
         const earned = a.check(stats);
-        <div class="achievement-item ${earned?'earned':'locked'}"><span class="achievement-emoji">${a.icon}</span><div class="achievement-info"><div class="achievement-title">${a.title}</div><div class="achievement-desc">${a.desc}</div></div></div>`;
+        return `<div class="achievement-item ${earned ? 'earned' : 'locked'}"><span class="achievement-emoji">${a.icon}</span><div class="achievement-info"><div class="achievement-title">${a.title}</div><div class="achievement-desc">${a.desc}</div></div></div>`;
     }).join('');
 }
 
