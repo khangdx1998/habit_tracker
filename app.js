@@ -310,6 +310,7 @@ function renderMain() {
         return;
     } else if (activeHabit === 'coach') {
         renderCoachDashboard();
+        return;
     } else if (activeHabit === 'reflections') {
         renderReflectionsDashboard();
         return;
