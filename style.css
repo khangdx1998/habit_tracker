@@ -422,3 +422,43 @@ th:hover { color: var(--text); }
     0% { left: -100%; }
     100% { left: 100%; }
 }
+
+/* ── Tags ──────────────────────────────────────────────── */
+.tag-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    margin-right: 4px;
+    margin-bottom: 4px;
+    background: rgba(255,255,255,0.08);
+    color: var(--text);
+}
+.tag-pill.interactive { cursor: pointer; }
+.tag-pill.interactive:hover { background: rgba(255,255,255,0.15); }
+
+.tag-selector {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 0.5rem;
+    max-height: 120px;
+    overflow-y: auto;
+    padding: 8px;
+    background: rgba(0,0,0,0.2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+}
+.tag-opt {
+    padding: 4px 10px;
+    border-radius: 14px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    transition: 0.2s;
+}
+.tag-opt:hover { background: rgba(255,255,255,0.05); }
+.tag-opt.selected { background: var(--accent); color: white; border-color: transparent; }

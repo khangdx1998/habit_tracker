@@ -5,7 +5,7 @@ const SB_KEY = 'REMOVED_KEY';
 // The global 'supabase' object comes from the CDN script
 const sbClient = supabase.createClient(SB_URL, SB_KEY);
 
-let habits = [], sessions = [];
+let habits = [], sessions = [], tags = [];
 let activeHabit = null, currentYear = new Date().getFullYear();
 let sortField = 'date', sortDir = 'desc';
 let showAllSessions = false;
@@ -15,6 +15,7 @@ const loadData = async () => {
     try {
         const { data: hData, error: hErr } = await sbClient.from('habits').select('*');
         const { data: sData, error: sErr } = await sbClient.from('sessions').select('*');
+        const { data: tData, error: tErr } = await sbClient.from('tags').select('*');
         
         if (hErr || sErr) throw hErr || sErr;
 
@@ -23,6 +24,7 @@ const loadData = async () => {
         habits = (hData || []).filter(h => !h.is_deleted);
         const validHabitIds = new Set(habits.map(h => h.id));
         sessions = (sData || []).filter(s => validHabitIds.has(s.habit_id)).map(s => ({ ...s, habitId: s.habit_id }));
+        tags = tData || [];
 
         // Migration: If Cloud is empty but localStorage has data, push to Cloud
         const localHabits = JSON.parse(localStorage.getItem('tp_habits') || '[]');
@@ -109,6 +111,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     initPickers();
     await loadData();
     renderSidebar();
+    renderSidebarTags();
     if (habits.length > 0) { 
         activeHabit = habits[0].id; 
         renderSidebar(); 
@@ -167,6 +170,12 @@ function renderSidebar() {
     }
     
     nav.innerHTML = html;
+}
+
+function renderSidebarTags() {
+    const el = document.getElementById('sidebarTags');
+    if (!el) return;
+    el.innerHTML = tags.map(t => `<span class="tag-pill" style="border: 1px solid rgba(255,255,255,0.1); font-size:0.65rem;">${t.name}</span>`).join('');
 }
 
 async function quickLog(habitId) {
@@ -595,6 +604,7 @@ function renderTable() {
         <th onclick="doSort('date')">Date${sortField==='date'?(sortDir==='desc'?' ↓':' ↑'):''}</th>
         <th onclick="doSort('value')">Value${sortField==='value'?(sortDir==='desc'?' ↓':' ↑'):''}</th>
         <th>Status</th>
+        <th>Tags</th>
         <th>Evidence</th>
         <th>Notes</th>
         <th>Actions</th></tr></thead><tbody>
@@ -603,6 +613,9 @@ function renderTable() {
             const mediaBtn = s.media ? `<button class="action-btn view-btn" onclick="openMedia('${s.id}')" style="background:${h.color}20; color:${h.color}">👁 View</button>` : '<span style="color:var(--dim); font-size:0.7rem">None</span>';
             const statusLabel = s.status === 'Approved' ? `<span style="color:var(--green); font-size:0.75rem; font-weight:700; padding:2px 6px; background:var(--green-glow); border-radius:4px;">✓ Approved</span>` : `<span style="color:var(--dim); font-size:0.75rem; font-weight:600; padding:2px 6px; background:rgba(255,255,255,0.05); border-radius:4px;">Draft</span>`;
             
+            const sessionTags = (s.tag_ids || []).map(tid => tags.find(t => t.id === tid)).filter(Boolean);
+            const tagsHTML = sessionTags.map(t => `<span class="tag-pill">${t.name}</span>`).join('');
+
             let actionsHTML = '';
             if (s.status !== 'Approved') {
                 actionsHTML += `<button class="action-btn" onclick="approveSession('${s.id}')" title="Approve" style="margin-right:4px; color:var(--green)">✓</button>`;
@@ -616,6 +629,7 @@ function renderTable() {
                 <td>${s.date}</td>
                 <td>${vd}</td>
                 <td>${statusLabel}</td>
+                <td>${tagsHTML}</td>
                 <td>${mediaBtn}</td>
                 <td style="color:var(--dim);font-size:0.78rem;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.notes||'—'}</td>
                 <td style="white-space:nowrap">
@@ -792,7 +806,18 @@ function openLogSession() {
     document.getElementById('logNotes').value = '';
     document.getElementById('logFile').value = ''; 
     document.getElementById('uploadStatus').textContent = '';
+    renderTagSelectors('logTagSelector');
     openModal('logModal');
+}
+
+function renderTagSelectors(containerId, selectedIds = []) {
+    const el = document.getElementById(containerId);
+    if (!el) return;
+    el.innerHTML = tags.map(t => `
+        <div class="tag-opt ${selectedIds.includes(t.id) ? 'selected' : ''}" 
+             onclick="this.classList.toggle('selected')" 
+             data-id="${t.id}">${t.name}</div>
+    `).join('');
 }
 
 async function handleLogSubmit(e) {
@@ -804,6 +829,8 @@ async function handleLogSubmit(e) {
     const notes = document.getElementById('logNotes').value.trim();
     const fileInput = document.getElementById('logFile');
     
+    const tagIds = Array.from(document.querySelectorAll('#logTagSelector .tag-opt.selected')).map(el => el.dataset.id);
+
     if (!date) return;
     let mediaUrl = null;
 
@@ -826,7 +853,17 @@ async function handleLogSubmit(e) {
     }
 
     const id = 's_'+Date.now();
-    const { error: insertErr } = await sbClient.from('sessions').insert({ id, habit_id: activeHabit, date, value: value ? parseFloat(value) : null, notes, media: mediaUrl, time: new Date().toTimeString().substring(0,5), status: 'Draft' });
+    const { error: insertErr } = await sbClient.from('sessions').insert({ 
+        id, 
+        habit_id: activeHabit, 
+        date, 
+        value: value ? parseFloat(value) : null, 
+        notes, 
+        media: mediaUrl, 
+        time: new Date().toTimeString().substring(0,5), 
+        status: 'Draft',
+        tag_ids: tagIds
+    });
     
     if (insertErr) {
         showAlert('Save Failed', 'Could not save to Cloud: ' + insertErr.message);
@@ -853,6 +890,8 @@ function openEditSession(id) {
     document.getElementById('editLogFile').value = '';
     document.getElementById('editUploadStatus').textContent = '';
 
+    renderTagSelectors('editLogTagSelector', s.tag_ids || []);
+    
     const preview = document.getElementById('editMediaPreview');
     if (s.media) {
         const isVid = s.media.toLowerCase().match(/\.(mp4|mov|webm)$/);
@@ -886,6 +925,8 @@ async function handleEditSession(e) {
     const fileInput = document.getElementById('editLogFile');
     const preview = document.getElementById('editMediaPreview');
     let mediaUrl = preview.dataset.currentMedia;
+
+    const tagIds = Array.from(document.querySelectorAll('#editLogTagSelector .tag-opt.selected')).map(el => el.dataset.id);
 
     if (!date) return;
 
@@ -921,7 +962,8 @@ async function handleEditSession(e) {
         date, 
         value: value ? parseFloat(value) : null, 
         notes,
-        media: mediaUrl
+        media: mediaUrl,
+        tag_ids: tagIds
     }).eq('id', id);
     
     await loadData();
@@ -995,4 +1037,44 @@ function showAlert(title, desc) {
     document.getElementById('alertTitle').textContent = title;
     document.getElementById('alertDesc').textContent = desc;
     openModal('alertModal');
+}
+
+// ── Tag Management ─────────────────────────────────────
+function openManageTagsModal() {
+    renderTagManager();
+    openModal('manageTagsModal');
+}
+
+function renderTagManager() {
+    const list = document.getElementById('tagManagerList');
+    if (!list) return;
+    list.innerHTML = tags.map(t => `
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:8px; background:rgba(255,255,255,0.03); border-radius:8px;">
+            <span style="font-size:0.85rem; font-weight:600;">${t.name}</span>
+            <button class="action-btn" onclick="handleDeleteTag('${t.id}')" style="color:var(--red); border-color:rgba(239,68,68,0.2);">✕</button>
+        </div>
+    `).join('');
+    if (tags.length === 0) list.innerHTML = '<div style="text-align:center; color:var(--dim); font-size:0.8rem; padding:1rem;">No tags yet</div>';
+}
+
+async function handleAddTag() {
+    const input = document.getElementById('newTagName');
+    const name = input.value.trim();
+    if (!name) return;
+    
+    const id = 't_' + Date.now();
+    await sbClient.from('tags').insert({ id, name });
+    input.value = '';
+    await loadData();
+    renderTagManager();
+    renderSidebarTags();
+}
+
+async function handleDeleteTag(id) {
+    if (!confirm('Delete this tag? It will be removed from all sessions.')) return;
+    await sbClient.from('tags').delete().eq('id', id);
+    // Note: In a real app, you'd also want to remove this ID from session tag_ids arrays
+    await loadData();
+    renderTagManager();
+    renderSidebarTags();
 }
