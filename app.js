@@ -19,8 +19,10 @@ const loadData = async () => {
         if (hErr || sErr) throw hErr || sErr;
 
         // Map Supabase snake_case habit_id to habitId for JS compatibility
-        habits = hData || [];
-        sessions = (sData || []).map(s => ({ ...s, habitId: s.habit_id }));
+        // Filter out soft-deleted habits
+        habits = (hData || []).filter(h => !h.is_deleted);
+        const validHabitIds = new Set(habits.map(h => h.id));
+        sessions = (sData || []).filter(s => validHabitIds.has(s.habit_id)).map(s => ({ ...s, habitId: s.habit_id }));
 
         // Migration: If Cloud is empty but localStorage has data, push to Cloud
         const localHabits = JSON.parse(localStorage.getItem('tp_habits') || '[]');
@@ -51,6 +53,34 @@ const loadData = async () => {
 const closeModal = id => document.getElementById(id).classList.remove('open');
 const openModal = id => document.getElementById(id).classList.add('open');
 const fmtDate = d => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+
+async function compressImage(file, maxWidth = 1200, maxHeight = 1200, quality = 0.7) {
+    if (!file.type.startsWith('image/')) return file; // Only compress images
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = event => {
+            const img = new Image();
+            img.src = event.target.result;
+            img.onload = () => {
+                let width = img.width, height = img.height;
+                if (width > maxWidth || height > maxHeight) {
+                    const ratio = Math.min(maxWidth / width, maxHeight / height);
+                    width *= ratio; height *= ratio;
+                }
+                const canvas = document.createElement('canvas');
+                canvas.width = width; canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                canvas.toBlob(blob => {
+                    resolve(new File([blob], file.name.replace(/\.[^/.]+$/, ".jpg"), { type: 'image/jpeg', lastModified: Date.now() }));
+                }, 'image/jpeg', quality);
+            };
+            img.onerror = reject;
+        };
+        reader.onerror = reject;
+    });
+}
 
 // ── Color & Icon Pickers ──────────────────────────────
 function initPickers() {
@@ -654,7 +684,8 @@ async function handleAddHabit(e) {
     await sbClient.from('habits').insert({ 
         id, name, icon, unit, description, color,
         goal_type, goal_target: goal_target ? parseFloat(goal_target) : null,
-        is_archived: false
+        is_archived: false,
+        is_deleted: false
     });
     await loadData(); activeHabit = id; closeModal('addHabitModal'); renderSidebar(); renderMain();
 }
@@ -716,10 +747,11 @@ function confirmDeleteHabit() {
         confirmBtn.style.display = 'none';
     } else {
         titleEl.textContent = 'Delete Habit?';
-        descEl.textContent = 'This will remove the habit and all its sessions permanently.';
+        descEl.textContent = 'This will hide the habit and all its sessions. It will not be permanently removed.';
         confirmBtn.style.display = 'block';
         confirmBtn.onclick = async () => {
-            await sbClient.from('habits').delete().eq('id', id);
+            // Soft delete: update is_deleted flag instead of calling .delete()
+            await sbClient.from('habits').update({ is_deleted: true }).eq('id', id);
             await loadData();
             activeHabit = habits.length ? habits[0].id : null;
             closeModal('deleteModal'); renderSidebar();
@@ -777,8 +809,14 @@ async function handleLogSubmit(e) {
 
     if (fileInput.files.length > 0) {
         submitBtn.disabled = true;
-        statusEl.textContent = '📤 Uploading to Cloud...';
-        const file = fileInput.files[0];
+        statusEl.textContent = '📤 Optimizing & Uploading...';
+        let file = fileInput.files[0];
+        
+        // Resize if it's an image
+        if (file.type.startsWith('image/')) {
+            try { file = await compressImage(file); } catch (e) { console.error("Compression failed", e); }
+        }
+
         const ext = file.name.split('.').pop();
         const fileName = `${Date.now()}.${ext}`;
         const { data, error } = await sbClient.storage.from('evidence').upload(fileName, file);
@@ -856,7 +894,11 @@ async function handleEditSession(e) {
     document.getElementById('editUploadStatus').textContent = fileInput.files.length ? 'Uploading new evidence...' : '';
 
     if (fileInput.files.length > 0) {
-        const file = fileInput.files[0];
+        let file = fileInput.files[0];
+        if (file.type.startsWith('image/')) {
+            try { file = await compressImage(file); } catch (e) { console.error("Compression failed", e); }
+        }
+
         const path = `evidence/${Date.now()}_${file.name}`;
         await sbClient.storage.from('evidence').upload(path, file);
         const { data: { publicUrl } } = sbClient.storage.from('evidence').getPublicUrl(path);
