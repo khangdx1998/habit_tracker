@@ -19,6 +19,49 @@
     --sidebar-w: 240px;
 }
 
+/* 🌑 Midnight Noir */
+[data-theme="midnight"] {
+    --bg: #000000;
+    --bg-sidebar: #050505;
+    --card: rgba(20, 20, 20, 0.95);
+    --accent: #ffffff;
+    --accent-glow: rgba(255, 255, 255, 0.1);
+    --border: rgba(255, 255, 255, 0.1);
+    --dim: #71717a;
+}
+
+/* 🌅 Sunset Glow */
+[data-theme="sunset"] {
+    --bg: #110d14;
+    --bg-sidebar: #1a141f;
+    --card: rgba(35, 25, 45, 0.9);
+    --accent: #f59e0b;
+    --accent-glow: rgba(245, 158, 11, 0.2);
+    --border: rgba(245, 158, 11, 0.1);
+}
+
+/* ❄️ Nordic Frost */
+[data-theme="nordic"] {
+    --bg: #0f172a;
+    --bg-sidebar: #1e293b;
+    --card: rgba(30, 41, 59, 0.95);
+    --accent: #38bdf8;
+    --accent-glow: rgba(56, 189, 248, 0.2);
+    --border: rgba(56, 189, 248, 0.1);
+}
+
+/* 🏮 Cyberpunk */
+[data-theme="cyberpunk"] {
+    --bg: #030014;
+    --bg-sidebar: #09001f;
+    --card: rgba(15, 0, 30, 0.95);
+    --accent: #ff00ff;
+    --accent-glow: rgba(255, 0, 255, 0.3);
+    --border: rgba(255, 0, 255, 0.2);
+    --green: #00ffcc;
+    --text: #fdfdfd;
+}
+
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 body {
     background: var(--bg);

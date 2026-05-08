@@ -76,6 +76,13 @@
             </button>
 
             <div class="sidebar-bottom">
+                <div style="padding:1rem 0; margin-bottom:0.5rem; border-bottom:1px solid var(--border); display:flex; justify-content:space-around; align-items:center; gap:8px;">
+                    <div onclick="setTheme('default')" title="Default" style="cursor:pointer; font-size:1.1rem; opacity:0.6; transition:opacity 0.2s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.6">🏠</div>
+                    <div onclick="setTheme('midnight')" title="Midnight Noir" style="cursor:pointer; font-size:1.1rem; opacity:0.6; transition:opacity 0.2s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.6">🌑</div>
+                    <div onclick="setTheme('sunset')" title="Sunset Glow" style="cursor:pointer; font-size:1.1rem; opacity:0.6; transition:opacity 0.2s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.6">🌅</div>
+                    <div onclick="setTheme('nordic')" title="Nordic Frost" style="cursor:pointer; font-size:1.1rem; opacity:0.6; transition:opacity 0.2s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.6">❄️</div>
+                    <div onclick="setTheme('cyberpunk')" title="Cyberpunk" style="cursor:pointer; font-size:1.1rem; opacity:0.6; transition:opacity 0.2s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.6">🏮</div>
+                </div>
                 <button class="sidebar-action" onclick="exportData()" title="Export">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                     Export

@@ -11,6 +11,21 @@ let sortField = 'date', sortDir = 'desc';
 let showAllSessions = false;
 let collapsedGroups = new Set(); // Track which groups are collapsed
 
+function setTheme(theme) {
+    if (theme === 'default') {
+        document.documentElement.removeAttribute('data-theme');
+        localStorage.removeItem('tp_theme');
+    } else {
+        document.documentElement.setAttribute('data-theme', theme);
+        localStorage.setItem('tp_theme', theme);
+    }
+}
+function initTheme() {
+    const savedTheme = localStorage.getItem('tp_theme');
+    if (savedTheme) setTheme(savedTheme);
+}
+initTheme();
+
 // ── Persistence (Cloud) ──────────────────────────────────
 const loadData = async () => {
     try {
