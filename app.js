@@ -785,14 +785,24 @@ async function handleAddHabit(e) {
     
     if (!name) return;
     const id = 'h_' + Date.now();
-    await sbClient.from('habits').insert({ 
+    const { error } = await sbClient.from('habits').insert({ 
         id, name, icon, unit, description, color,
         goal_type, goal_target: goal_target ? parseFloat(goal_target) : null,
         is_archived: false,
         is_deleted: false,
         group_id: document.getElementById('habitGroup').value || null
     });
-    await loadData(); activeHabit = id; closeModal('addHabitModal'); renderSidebar(); renderMain();
+
+    if (error) {
+        showAlert('Error', 'Failed to create habit: ' + error.message);
+        return;
+    }
+
+    await loadData(); 
+    activeHabit = id; 
+    closeModal('addHabitModal'); 
+    renderSidebar(); 
+    renderMain();
 }
 
 function openEditHabit(id) {
