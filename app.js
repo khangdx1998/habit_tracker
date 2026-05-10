@@ -1351,21 +1351,21 @@ function confirmDeleteHabit() {
                             <div class="form-group">
                                 <label>How is your mood today?</label>
                                 <div class="icon-picker" id="moodPicker">
-                                    <div class="icon-opt ${existing?.mood===1?'selected':''}" data-val="1">😢</div>
-                                    <div class="icon-opt ${existing?.mood===2?'selected':''}" data-val="2">😕</div>
-                                    <div class="icon-opt ${existing?.mood===3?'selected':''}" data-val="3">😐</div>
-                                    <div class="icon-opt ${existing?.mood===4?'selected':''}" data-val="4">🙂</div>
-                                    <div class="icon-opt ${existing?.mood===5?'selected':''}" data-val="5">🤩</div>
+                                    <div class="icon-opt ${existing?.mood===1?'selected':''}" data-val="1" title="Terrible">😢</div>
+                                    <div class="icon-opt ${existing?.mood===2?'selected':''}" data-val="2" title="Bad">😕</div>
+                                    <div class="icon-opt ${existing?.mood===3?'selected':''}" data-val="3" title="Neutral">😐</div>
+                                    <div class="icon-opt ${existing?.mood===4?'selected':''}" data-val="4" title="Good">🙂</div>
+                                    <div class="icon-opt ${existing?.mood===5?'selected':''}" data-val="5" title="Great">🤩</div>
                                 </div>
                             </div>
                             <div class="form-group">
                                 <label>Energy Level</label>
                                 <div class="icon-picker" id="energyPicker">
-                                    <div class="icon-opt ${existing?.energy===1?'selected':''}" data-val="1">🌑</div>
-                                    <div class="icon-opt ${existing?.energy===2?'selected':''}" data-val="2">🌘</div>
-                                    <div class="icon-opt ${existing?.energy===3?'selected':''}" data-val="3">🌗</div>
-                                    <div class="icon-opt ${existing?.energy===4?'selected':''}" data-val="4">🌖</div>
-                                    <div class="icon-opt ${existing?.energy===5?'selected':''}" data-val="5">🌕</div>
+                                    <div class="icon-opt ${existing?.energy===1?'selected':''}" data-val="1" title="Very Low">🌑</div>
+                                    <div class="icon-opt ${existing?.energy===2?'selected':''}" data-val="2" title="Low">🌘</div>
+                                    <div class="icon-opt ${existing?.energy===3?'selected':''}" data-val="3" title="Moderate">🌗</div>
+                                    <div class="icon-opt ${existing?.energy===4?'selected':''}" data-val="4" title="High">🌖</div>
+                                    <div class="icon-opt ${existing?.energy===5?'selected':''}" data-val="5" title="Peak">🌕</div>
                                 </div>
                             </div>
                             <div class="form-group">
@@ -1401,23 +1401,55 @@ function confirmDeleteHabit() {
                 if (!list) return;
     const sorted = [...reflections].sort((a,b) => b.date.localeCompare(a.date));
     
-    list.innerHTML = sorted.map(r => {
-        const moodIcons = ['😢','😕','😐','🙂','🤩'];
-                const energyIcons = ['🌑','🌘','🌗','🌖','🌕'];
-                return `
-                <div style="padding:1rem; background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:12px;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
-                        <span style="font-weight:700; font-size:0.9rem;">${r.date}</span>
-                        <div style="display:flex; gap:8px; font-size:1.1rem;">
-                            <span title="Mood">${moodIcons[r.mood - 1]}</span>
-                            <span title="Energy">${energyIcons[r.energy - 1]}</span>
-                        </div>
-                    </div>
-                    <div style="font-size:0.85rem; color:var(--dim); line-height:1.5; white-space:pre-wrap;">${r.journal_text || 'No notes.'}</div>
-                </div>
-                `;
-    }).join('');
-                if (reflections.length === 0) list.innerHTML = '<div style="text-align:center; color:var(--dim); padding:2rem;">No history yet.</div>';
+    const moodIcons = ['😢', '😕', '😐', '🙂', '🤩'];
+    const moodLabels = ['Terrible', 'Bad', 'Neutral', 'Good', 'Great'];
+    const energyIcons = ['🌑', '🌘', '🌗', '🌖', '🌕'];
+    const energyLabels = ['Very Low', 'Low', 'Moderate', 'High', 'Peak'];
+
+    if (reflections.length === 0) {
+        list.innerHTML = '<div style="text-align:center; color:var(--dim); padding:2rem;">No history yet.</div>';
+        return;
+    }
+
+    list.innerHTML = `
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width:100px">Date</th>
+                        <th>Mood</th>
+                        <th>Energy</th>
+                        <th>Notes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${sorted.map(r => {
+        const mLabel = moodLabels[r.mood - 1] || '—';
+        const eLabel = energyLabels[r.energy - 1] || '—';
+        return `
+                        <tr>
+                            <td style="font-weight:600; white-space:nowrap">${r.date}</td>
+                            <td>
+                                <div style="display:flex; align-items:center; gap:8px;">
+                                    <span style="font-size:1.1rem">${moodIcons[r.mood - 1] || ''}</span>
+                                    <span style="font-size:0.75rem; font-weight:600">${mLabel}</span>
+                                </div>
+                            </td>
+                            <td>
+                                <div style="display:flex; align-items:center; gap:8px;">
+                                    <span style="font-size:1.1rem">${energyIcons[r.energy - 1] || ''}</span>
+                                    <span style="font-size:0.75rem; font-weight:600">${eLabel}</span>
+                                </div>
+                            </td>
+                            <td style="color:var(--dim); font-size:0.78rem; line-height:1.4; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap" title="${r.journal_text || ''}">
+                                ${r.journal_text || '—'}
+                            </td>
+                        </tr>`;
+    }).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
 }
 
                 async function handleReflectionSubmit(e) {
