@@ -1370,7 +1370,7 @@ function confirmDeleteHabit() {
                             </div>
                             <div class="form-group">
                                 <label>Notes / Journal</label>
-                                <textarea id="reflectionNotes" rows="4" placeholder="How was your day? What's on your mind?">${existing?.journal_text || ''}</textarea>
+                                <textarea id="reflectionNotes" rows="4" placeholder="How was your day? What's on your mind?"></textarea>
                             </div>
                             <button type="submit" class="btn btn-primary" style="width:100%">${existing ? 'Update' : 'Save Reflection'}</button>
                         </form>
