@@ -6,6 +6,7 @@ const SB_KEY = 'REMOVED_KEY';
 const sbClient = supabase.createClient(SB_URL, SB_KEY);
 
 let habits = [], sessions = [], tags = [], milestones = [], habitGroups = [], reflections = [], dailyQuotes = [];
+let moods = [], energies = [];
 let activeHabit = null, currentYear = new Date().getFullYear();
 let sortField = 'date', sortDir = 'desc';
 let showAllSessions = false;
@@ -41,6 +42,8 @@ const loadData = async () => {
         const { data: gData } = await sbClient.from('habit_groups').select('*');
         const { data: rData } = await sbClient.from('reflections').select('*');
         const { data: qData } = await sbClient.from('daily_quotes').select('*');
+        const { data: moodData } = await sbClient.from('mood').select('*');
+        const { data: energyData } = await sbClient.from('energy').select('*');
 
         habits = (hData || []).filter(h => !h.is_deleted);
         const validHabitIds = new Set(habits.map(h => h.id));
@@ -50,6 +53,8 @@ const loadData = async () => {
         habitGroups = gData || [];
         reflections = rData || [];
         dailyQuotes = qData || [];
+        moods = (moodData || []).sort((a, b) => a.value - b.value);
+        energies = (energyData || []).sort((a, b) => a.value - b.value);
 
         // Migration: If Cloud is empty but localStorage has data, push to Cloud
         const localHabits = JSON.parse(localStorage.getItem('tp_habits') || '[]');
@@ -1351,21 +1356,27 @@ function confirmDeleteHabit() {
                             <div class="form-group">
                                 <label>How is your mood today?</label>
                                 <div class="icon-picker" id="moodPicker">
-                                    <div class="icon-opt ${existing?.mood===1?'selected':''}" data-val="1" title="Terrible">😢</div>
-                                    <div class="icon-opt ${existing?.mood===2?'selected':''}" data-val="2" title="Bad">😕</div>
-                                    <div class="icon-opt ${existing?.mood===3?'selected':''}" data-val="3" title="Neutral">😐</div>
-                                    <div class="icon-opt ${existing?.mood===4?'selected':''}" data-val="4" title="Good">🙂</div>
-                                    <div class="icon-opt ${existing?.mood===5?'selected':''}" data-val="5" title="Great">🤩</div>
+                                    ${moods.map(m => `
+                                        <div class="icon-opt ${existing?.mood === m.value ? 'selected' : ''}" 
+                                             data-val="${m.value}" 
+                                             title="${m.label}: ${m.description || ''}">${m.icon}</div>
+                                    `).join('')}
+                                </div>
+                                <div id="moodHint" style="font-size: 0.7rem; color: var(--dim); margin-top: 8px; min-height: 1em;">
+                                    ${existing?.mood ? moods.find(m => m.value === existing.mood)?.description || '' : 'Select a mood to see more...'}
                                 </div>
                             </div>
                             <div class="form-group">
                                 <label>Energy Level</label>
                                 <div class="icon-picker" id="energyPicker">
-                                    <div class="icon-opt ${existing?.energy===1?'selected':''}" data-val="1" title="Very Low">🌑</div>
-                                    <div class="icon-opt ${existing?.energy===2?'selected':''}" data-val="2" title="Low">🌘</div>
-                                    <div class="icon-opt ${existing?.energy===3?'selected':''}" data-val="3" title="Moderate">🌗</div>
-                                    <div class="icon-opt ${existing?.energy===4?'selected':''}" data-val="4" title="High">🌖</div>
-                                    <div class="icon-opt ${existing?.energy===5?'selected':''}" data-val="5" title="Peak">🌕</div>
+                                    ${energies.map(e => `
+                                        <div class="icon-opt ${existing?.energy === e.value ? 'selected' : ''}" 
+                                             data-val="${e.value}" 
+                                             title="${e.label}: ${e.description || ''}">${e.icon}</div>
+                                    `).join('')}
+                                </div>
+                                <div id="energyHint" style="font-size: 0.7rem; color: var(--dim); margin-top: 8px; min-height: 1em;">
+                                    ${existing?.energy ? energies.find(e => e.value === existing.energy)?.description || '' : 'Select energy level to see more...'}
                                 </div>
                             </div>
                             <div class="form-group">
@@ -1387,10 +1398,20 @@ function confirmDeleteHabit() {
 
     // Init picker events
     document.querySelectorAll('#moodPicker .icon-opt, #energyPicker .icon-opt').forEach(opt => {
-                    opt.onclick = () => {
-                        opt.parentElement.querySelectorAll('.icon-opt').forEach(o => o.classList.remove('selected'));
-                        opt.classList.add('selected');
-                    };
+        opt.onclick = () => {
+            const isMood = opt.parentElement.id === 'moodPicker';
+            const list = isMood ? moods : energies;
+            const hintId = isMood ? 'moodHint' : 'energyHint';
+            const val = parseInt(opt.dataset.val);
+            const item = list.find(x => x.value === val);
+
+            opt.parentElement.querySelectorAll('.icon-opt').forEach(o => o.classList.remove('selected'));
+            opt.classList.add('selected');
+
+            if (item && document.getElementById(hintId)) {
+                document.getElementById(hintId).textContent = item.description || '';
+            }
+        };
     });
 
                 renderReflectionHistory();
@@ -1401,11 +1422,6 @@ function confirmDeleteHabit() {
                 if (!list) return;
     const sorted = [...reflections].sort((a,b) => b.date.localeCompare(a.date));
     
-    const moodIcons = ['😢', '😕', '😐', '🙂', '🤩'];
-    const moodLabels = ['Terrible', 'Bad', 'Neutral', 'Good', 'Great'];
-    const energyIcons = ['🌑', '🌘', '🌗', '🌖', '🌕'];
-    const energyLabels = ['Very Low', 'Low', 'Moderate', 'High', 'Peak'];
-
     if (reflections.length === 0) {
         list.innerHTML = '<div style="text-align:center; color:var(--dim); padding:2rem;">No history yet.</div>';
         return;
@@ -1424,20 +1440,24 @@ function confirmDeleteHabit() {
                 </thead>
                 <tbody>
                     ${sorted.map(r => {
-        const mLabel = moodLabels[r.mood - 1] || '—';
-        const eLabel = energyLabels[r.energy - 1] || '—';
+        const moodObj = moods.find(m => m.value == r.mood);
+        const energyObj = energies.find(e => e.value == r.energy);
+        const mLabel = moodObj ? moodObj.label : '—';
+        const mIcon = moodObj ? moodObj.icon : '';
+        const eLabel = energyObj ? energyObj.label : '—';
+        const eIcon = energyObj ? energyObj.icon : '';
         return `
                         <tr>
                             <td style="font-weight:600; white-space:nowrap">${r.date}</td>
                             <td>
                                 <div style="display:flex; align-items:center; gap:8px;">
-                                    <span style="font-size:1.1rem">${moodIcons[r.mood - 1] || ''}</span>
+                                    <span style="font-size:1.1rem">${mIcon}</span>
                                     <span style="font-size:0.75rem; font-weight:600">${mLabel}</span>
                                 </div>
                             </td>
                             <td>
                                 <div style="display:flex; align-items:center; gap:8px;">
-                                    <span style="font-size:1.1rem">${energyIcons[r.energy - 1] || ''}</span>
+                                    <span style="font-size:1.1rem">${eIcon}</span>
                                     <span style="font-size:0.75rem; font-weight:600">${eLabel}</span>
                                 </div>
                             </td>
