@@ -545,23 +545,11 @@ function renderDashboard() {
         const lastSession = [...ss].sort((a, b) => b.date.localeCompare(a.date) || b.time.localeCompare(a.time))[0];
         let lastText = 'Never';
         if (lastSession) {
-            const now = new Date();
-            const sessionFullDate = new Date(`${lastSession.date}T${lastSession.time || '00:00'}`);
-            const diffMs = now - sessionFullDate;
-            const diffDays = Math.floor((new Date(now.toDateString()) - new Date(lastSession.date)) / 86400000);
+            const now = new Date(); now.setHours(0,0,0,0);
+            const sessionDate = new Date(lastSession.date); sessionDate.setHours(0,0,0,0);
+            const diffDays = Math.round((now - sessionDate) / 86400000);
             
-            let timeLabel = '';
-            if (diffDays === 0) {
-                const diffMin = Math.floor(diffMs / 60000);
-                if (diffMin < 1) timeLabel = 'Just now';
-                else if (diffMin < 60) timeLabel = `${diffMin}m ago`;
-                else timeLabel = `${Math.floor(diffMin / 60)}h ago`;
-            } else if (diffDays === 1) {
-                timeLabel = 'Yesterday';
-            } else {
-                timeLabel = `${diffDays}d ago`;
-            }
-
+            const timeLabel = diffDays === 0 ? 'Today' : (diffDays === 1 ? 'Yesterday' : `${diffDays}d ago`);
             const valLabel = lastSession.value != null ? `${lastSession.value} ${h.unit || ''}` : '';
             lastText = valLabel ? `${valLabel} (${timeLabel})` : timeLabel;
         }
