@@ -644,6 +644,15 @@ function switchYear(y) {
     renderHeatmap(y, h, ss); renderYearPills(ss);
 }
 
+// ── Time of Day Helper ─────────────────────────────────
+function getTimeOfDay(createdAt) {
+    if (!createdAt) return { symbol: '—', label: '', cls: '' };
+    const hour = new Date(createdAt).getHours();
+    if (hour >= 5 && hour < 12)  return { symbol: '🌅', label: 'Morning',   cls: 'time-morning'   };
+    if (hour >= 12 && hour < 18) return { symbol: '☀️', label: 'Afternoon', cls: 'time-afternoon' };
+    return                              { symbol: '🌙', label: 'Night',     cls: 'time-night'     };
+}
+
 // ── Activity Table ─────────────────────────────────────
 function renderTable() {
     const h = habits.find(x => x.id === activeHabit);
@@ -674,6 +683,7 @@ function renderTable() {
 
     let html = `<div class="table-wrapper"><table><thead><tr>
         <th onclick="doSort('date')">Date${sortField === 'date' ? (sortDir === 'desc' ? ' ↓' : ' ↑') : ''}</th>
+        <th>Time</th>
         <th onclick="doSort('value')">Value${sortField === 'value' ? (sortDir === 'desc' ? ' ↓' : ' ↑') : ''}</th>
         <th>Status</th>
         <th>Tags</th>
@@ -697,8 +707,10 @@ function renderTable() {
             actionsHTML += `<span style="color:var(--dim); font-size:0.8rem">Locked</span>`;
         }
 
+        const tod = getTimeOfDay(s.created_at);
         return `<tr>
                 <td>${s.date}</td>
+                <td><span class="time-of-day-badge ${tod.cls}" title="${tod.label}">${tod.symbol}<span class="tod-label">${tod.label}</span></span></td>
                 <td>${vd}</td>
                 <td>${statusLabel}</td>
                 <td>${tagsHTML}</td>

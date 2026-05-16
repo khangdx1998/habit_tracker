@@ -299,6 +299,42 @@ th:hover { color: var(--text); }
 .search-input { padding: 6px 12px; background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-size: 0.78rem; font-family: inherit; outline: none; transition: var(--transition); width: 200px; }
 .search-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
 
+/* ── Time of Day Badges ───────────────────────────────── */
+.time-of-day-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 10px;
+    border-radius: 16px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    white-space: nowrap;
+    transition: var(--transition);
+}
+.time-of-day-badge .tod-label {
+    font-size: 0.68rem;
+    letter-spacing: 0.3px;
+}
+.time-morning {
+    background: rgba(251, 191, 36, 0.12);
+    color: #fbbf24;
+    border: 1px solid rgba(251, 191, 36, 0.2);
+}
+.time-afternoon {
+    background: rgba(245, 158, 11, 0.12);
+    color: #f59e0b;
+    border: 1px solid rgba(245, 158, 11, 0.2);
+}
+.time-night {
+    background: rgba(129, 140, 248, 0.12);
+    color: #818cf8;
+    border: 1px solid rgba(129, 140, 248, 0.2);
+}
+@media (max-width: 850px) {
+    .time-of-day-badge .tod-label { display: none; }
+    .time-of-day-badge { padding: 3px 6px; }
+}
+
 /* ── Empty / Welcome ───────────────────────────────────── */
 .empty-state { text-align: center; padding: 2rem 1rem; color: var(--dim); }
 .empty-icon { font-size: 2.5rem; margin-bottom: 0.6rem; }
