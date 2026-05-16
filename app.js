@@ -545,12 +545,25 @@ function renderDashboard() {
         const lastSession = [...ss].sort((a, b) => b.date.localeCompare(a.date) || b.time.localeCompare(a.time))[0];
         let lastText = 'Never';
         if (lastSession) {
-            const d = new Date(lastSession.date);
-            const today = new Date(); today.setHours(0,0,0,0);
-            const diff = Math.round((today - d) / 86400000);
-            const timeLabel = diff === 0 ? 'Today' : (diff === 1 ? 'Yesterday' : `${diff}d ago`);
-            const valLabel = lastSession.value != null ? `${lastSession.value}${h.unit || ''} ` : '';
-            lastText = `${valLabel}(${timeLabel})`;
+            const now = new Date();
+            const sessionFullDate = new Date(`${lastSession.date}T${lastSession.time || '00:00'}`);
+            const diffMs = now - sessionFullDate;
+            const diffDays = Math.floor((new Date(now.toDateString()) - new Date(lastSession.date)) / 86400000);
+            
+            let timeLabel = '';
+            if (diffDays === 0) {
+                const diffMin = Math.floor(diffMs / 60000);
+                if (diffMin < 1) timeLabel = 'Just now';
+                else if (diffMin < 60) timeLabel = `${diffMin}m ago`;
+                else timeLabel = `${Math.floor(diffMin / 60)}h ago`;
+            } else if (diffDays === 1) {
+                timeLabel = 'Yesterday';
+            } else {
+                timeLabel = `${diffDays}d ago`;
+            }
+
+            const valLabel = lastSession.value != null ? `${lastSession.value} ${h.unit || ''}` : '';
+            lastText = valLabel ? `${valLabel} (${timeLabel})` : timeLabel;
         }
 
         // Mini 7-Day Sparkline
