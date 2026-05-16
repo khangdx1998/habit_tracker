@@ -552,7 +552,7 @@ function renderDashboard() {
 
         // Priority Styling
         const isHigh = h.priority === 'high';
-        const priorityBorder = isHigh ? 'border: 1.5px solid #fbbf24; box-shadow: 0 0 15px rgba(251, 191, 36, 0.1);' : 'border: 1px solid var(--border);';
+        const priorityBorder = isHigh ? 'border: 1px solid rgba(251, 191, 36, 0.3); box-shadow: 0 8px 32px rgba(0,0,0,0.4); transform: translateY(-2px);' : 'border: 1px solid var(--border);';
 
         // Last Logged Logic (unchanged but context needed)
         const lastSession = [...ss].sort((a, b) => b.date.localeCompare(a.date) || b.time.localeCompare(a.time))[0];
@@ -577,16 +577,19 @@ function renderDashboard() {
 
         return `
             <div class="stat-card dashboard-habit-card ${isHigh ? 'priority-high' : ''}" onclick="selectHabit('${h.id}')" 
-                 style="cursor:pointer; transition:all 0.3s ease; padding:1.25rem; display:flex; flex-direction:column; gap:12px; min-height:140px; position:relative; overflow:hidden; background: var(--bg-sidebar); ${priorityBorder}">
+                 style="cursor:pointer; transition:all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); padding:1.25rem; display:flex; flex-direction:column; gap:12px; min-height:140px; position:relative; overflow:hidden; background: var(--bg-sidebar); ${priorityBorder}">
                 
-                ${isHigh ? `<div style="position:absolute; top:8px; right:8px; font-size:0.7rem; background:#fbbf24; color:#000; font-weight:900; padding:2px 6px; border-radius:4px; z-index:2; text-transform:uppercase;">Priority</div>` : ''}
+                ${isHigh ? `<div style="position:absolute; top:0; left:0; width:100%; height:3px; background:linear-gradient(90deg, transparent, #fbbf24, transparent); opacity:0.6;"></div>` : ''}
 
                 <div style="display:flex; align-items:flex-start; gap:14px; position:relative; z-index:1;">
                     <div style="font-size:1.8rem; background:rgba(255,255,255,0.02); width:48px; height:48px; display:flex; align-items:center; justify-content:center; border-radius:10px; border:1px solid rgba(255,255,255,0.05); flex-shrink:0;">
                         ${h.icon}
                     </div>
                     <div style="flex:1;">
-                        <div style="font-weight:800; font-size:1.05rem; color:var(--text); margin-bottom:4px; line-height:1.2;">${h.name}</div>
+                        <div style="font-weight:800; font-size:1.05rem; color:var(--text); margin-bottom:4px; line-height:1.2; display:flex; align-items:center; gap:6px;">
+                            ${h.name}
+                            ${isHigh ? '<span title="High Priority" style="color:#fbbf24; font-size:0.9rem;">⭐️</span>' : ''}
+                        </div>
                         <div style="font-size:0.7rem; color:var(--dim); font-weight:600; display:flex; align-items:center; gap:5px;">
                             <span>⏱️ Last: <strong style="color:var(--text);opacity:0.8">${lastText}</strong></span>
                         </div>
@@ -612,7 +615,7 @@ function renderDashboard() {
                     </div>
                 </div>
 
-                <div style="position:absolute; top:0; right:0; width:100px; height:100px; background:${isHigh ? '#fbbf24' : h.color}; opacity:${isHigh ? '0.05' : '0.02'}; filter:blur(50px); border-radius:50%;"></div>
+                <div style="position:absolute; top:0; right:0; width:100px; height:100px; background:${isHigh ? '#fbbf24' : h.color}; opacity:${isHigh ? '0.04' : '0.02'}; filter:blur(50px); border-radius:50%;"></div>
             </div>
         `;
     }).join('');
