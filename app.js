@@ -11,6 +11,7 @@ let activeHabit = null, currentYear = new Date().getFullYear();
 let sortField = 'date', sortDir = 'desc';
 let showAllSessions = false;
 let collapsedGroups = new Set(); // Track which groups are collapsed
+let selectedHeatmapDate = null; // Filter for heatmap click
 
 function setTheme(theme) {
     if (theme === 'default') {
@@ -341,6 +342,7 @@ function selectHabit(id) {
     currentYear = new Date().getFullYear();
     sortField = 'date'; sortDir = 'desc';
     showAllSessions = false;
+    selectedHeatmapDate = null;
     renderSidebar();
     renderMain();
     if (window.innerWidth <= 850) toggleSidebar();
@@ -534,11 +536,30 @@ function renderDashboard() {
     const habitCardsHTML = activeHabitsList.map(h => {
         const ss = sessions.filter(s => s.habitId === h.id && s.status === 'Approved');
         const stats = computeStats(ss);
+        
+        // Weekly Progress Calculation
+        const target = h.goal_target || 5; // Default to 5 if not set
+        const today = new Date();
+        const dow = today.getDay(), off = dow === 0 ? 6 : dow - 1;
+        const startOfWeek = new Date(today); startOfWeek.setDate(today.getDate() - off); startOfWeek.setHours(0, 0, 0, 0);
+        
+        const sessionsThisWeek = new Set(ss.filter(s => new Date(s.date) >= startOfWeek).map(s => s.date)).size;
+        const progressPct = Math.min((sessionsThisWeek / target) * 100, 100);
 
         return `
-            <div class="stat-card" style="cursor:pointer; transition:all 0.2s; padding:1.5rem; display:flex; align-items:center; gap:15px; min-height:80px; justify-content:center;" onclick="selectHabit('${h.id}')">
-                <span style="font-size:1.8rem; flex-shrink:0;">${h.icon}</span>
-                <div style="font-weight:700; font-size:1.1rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${h.name}</div>
+            <div class="stat-card dashboard-habit-card" onclick="selectHabit('${h.id}')" style="cursor:pointer; transition:all 0.2s; padding:1.2rem; display:flex; flex-direction:column; gap:12px; min-height:100px; position:relative; overflow:hidden;">
+                <div style="display:flex; align-items:center; gap:12px; position:relative; z-index:1;">
+                    <span style="font-size:1.6rem; flex-shrink:0;">${h.icon}</span>
+                    <div style="flex:1;">
+                        <div style="font-weight:700; font-size:1rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${h.name}</div>
+                        <div style="font-size:0.7rem; color:var(--dim); font-weight:600;">${sessionsThisWeek} / ${target} days</div>
+                    </div>
+                    <div style="font-size:1.1rem; font-weight:800; color:${progressPct >= 100 ? 'var(--green)' : 'var(--text)'}; opacity:0.8;">${Math.round(progressPct)}%</div>
+                </div>
+                <div class="weekly-progress-bar-bg" style="height:6px; background:rgba(255,255,255,0.05); border-radius:10px; position:relative; z-index:1;">
+                    <div class="weekly-progress-bar-fill" style="height:100%; width:${progressPct}%; background:${h.color}; border-radius:10px; transition:width 0.5s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 0 10px ${h.color}40;"></div>
+                </div>
+                <div style="position:absolute; bottom:0; left:0; right:0; height:4px; background:${h.color}; opacity:0.1;"></div>
             </div>
         `;
     }).join('');
@@ -681,7 +702,16 @@ function renderHeatmap(year, h, ss) {
             const c = dc[ds] || 0;
             if (cur > today) { day.classList.add('future'); }
             else if (c > 0) { day.style.background = h.color; day.classList.add('level-' + Math.min(c, 4)); }
-            day.onmouseover = e => { const tt = document.getElementById('tooltip'); tt.textContent = `${c} session${c !== 1 ? 's' : ''} — ${ds}`; tt.style.display = 'block'; tt.style.left = (e.clientX + 10) + 'px'; tt.style.top = (e.clientY + 10) + 'px'; };
+            
+            if (selectedHeatmapDate === ds) day.classList.add('selected');
+            
+            day.onclick = () => {
+                if (selectedHeatmapDate === ds) selectedHeatmapDate = null;
+                else selectedHeatmapDate = ds;
+                renderMain(); // Re-render to update table and heatmap highlight
+            };
+
+            day.onmouseover = e => { const tt = document.getElementById('tooltip'); tt.textContent = `${c} session${c !== 1 ? 's' : ''} — ${ds}${selectedHeatmapDate === ds ? ' (Filtered)' : ''}`; tt.style.display = 'block'; tt.style.left = (e.clientX + 10) + 'px'; tt.style.top = (e.clientY + 10) + 'px'; };
             day.onmouseout = () => document.getElementById('tooltip').style.display = 'none';
             if (cur.getDate() <= 7 && cur.getMonth() !== lm && i % 7 === 0) { const ml = document.createElement('div'); ml.textContent = months[cur.getMonth()]; ml.style.gridColumn = Math.floor(i / 7) + 1; monthRow.appendChild(ml); lm = cur.getMonth(); }
         } else { day.style.opacity = '0.02'; }
@@ -792,6 +822,9 @@ function renderTable() {
     if (!wrap) return;
 
     let ss = sessions.filter(s => s.habitId === h.id);
+    if (selectedHeatmapDate) {
+        ss = ss.filter(s => s.date === selectedHeatmapDate);
+    }
     const q = (document.getElementById('activitySearch')?.value || '').toLowerCase();
 
     if (q) ss = ss.filter(s => s.date.includes(q) || (s.notes || '').toLowerCase().includes(q));
@@ -809,10 +842,18 @@ function renderTable() {
 
     const totalCount = ss.length;
     const isSearching = q.length > 0;
-    const limit = (isSearching || showAllSessions) ? 100 : 5;
+    const limit = (isSearching || showAllSessions || selectedHeatmapDate) ? 100 : 5;
     const displayList = ss.slice(0, limit);
 
-    let html = `<div class="table-wrapper"><table><thead><tr>
+    let html = '';
+    if (selectedHeatmapDate) {
+        html += `<div style="display:flex; align-items:center; gap:10px; margin-bottom:1rem; padding:8px 12px; background:var(--accent-glow); border-radius:8px; border:1px solid var(--accent);">
+            <span style="font-size:0.8rem; font-weight:700;">📅 Filtering: ${selectedHeatmapDate}</span>
+            <button class="btn btn-ghost" style="padding:2px 8px; font-size:0.7rem; height:auto;" onclick="selectedHeatmapDate=null; renderMain();">Clear Filter</button>
+        </div>`;
+    }
+
+    html += `<div class="table-wrapper"><table><thead><tr>
         <th onclick="doSort('date')">Date${sortField === 'date' ? (sortDir === 'desc' ? ' ↓' : ' ↑') : ''}</th>
         <th>Time</th>
         <th onclick="doSort('value')">Value${sortField === 'value' ? (sortDir === 'desc' ? ' ↓' : ' ↑') : ''}</th>
