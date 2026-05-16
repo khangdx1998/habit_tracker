@@ -542,80 +542,23 @@ function renderDashboard() {
         ss.forEach(s => { if (new Date(s.date) >= startOfWeek) totalSessionsThisWeek++; });
     });
 
-    const habitCardsHTML = sortedHabits.map(h => {
-        const ss = sessions.filter(s => s.habitId === h.id && s.status === 'Approved');
-        const stats = computeStats(ss);
-        
-        const target = h.goal_target || 30;
-        const totalDaysLogged = new Set(ss.map(s => s.date)).size;
-        const progressPct = Math.min((totalDaysLogged / target) * 100, 100);
+    const highHabits = sortedHabits.filter(h => h.priority === 'high');
+    const mediumHabits = sortedHabits.filter(h => h.priority === 'medium' || !h.priority);
+    const lowHabits = sortedHabits.filter(h => h.priority === 'low');
 
-        // Priority Styling
-        const isHigh = h.priority === 'high';
-        const priorityBorder = isHigh ? 'border: 1px solid rgba(251, 191, 36, 0.3); box-shadow: 0 8px 32px rgba(0,0,0,0.4); transform: translateY(-2px);' : 'border: 1px solid var(--border);';
-
-        // Last Logged Logic (unchanged but context needed)
-        const lastSession = [...ss].sort((a, b) => b.date.localeCompare(a.date) || b.time.localeCompare(a.time))[0];
-        let lastText = 'Never';
-        if (lastSession) {
-            const now = new Date(); now.setHours(0,0,0,0);
-            const sessionDate = new Date(lastSession.date); sessionDate.setHours(0,0,0,0);
-            const diffDays = Math.round((now - sessionDate) / 86400000);
-            const timeLabel = diffDays === 0 ? 'Today' : (diffDays === 1 ? 'Yesterday' : `${diffDays}d ago`);
-            const valLabel = lastSession.value != null ? `${lastSession.value} ${h.unit || ''}` : '';
-            lastText = valLabel ? `${valLabel} (${timeLabel})` : timeLabel;
-        }
-
-        // Mini 7-Day Sparkline
-        let sparklineHTML = '';
-        for (let i = 0; i < 7; i++) {
-            const d = new Date(startOfWeek); d.setDate(d.getDate() + i);
-            const ds = fmtDate(d);
-            const done = ss.some(s => s.date === ds);
-            sparklineHTML += `<div style="width:12px; height:12px; border-radius:3px; background:${done ? h.color : 'rgba(255,255,255,0.06)'}; box-shadow: ${done ? `0 0 8px ${h.color}40` : 'none'};" title="${ds}"></div>`;
-        }
-
+    const sectionsHTML = [
+        { title: 'High Priority', habits: highHabits, icon: '⭐️', color: '#fbbf24' },
+        { title: 'Medium Priority', habits: mediumHabits, icon: '⚡', color: 'var(--accent)' },
+        { title: 'Low Priority', habits: lowHabits, icon: '🍃', color: 'var(--dim)' }
+    ].map(section => {
+        if (section.habits.length === 0) return '';
         return `
-            <div class="stat-card dashboard-habit-card ${isHigh ? 'priority-high' : ''}" onclick="selectHabit('${h.id}')" 
-                 style="cursor:pointer; transition:all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); padding:1.25rem; display:flex; flex-direction:column; gap:12px; min-height:140px; position:relative; overflow:hidden; background: var(--bg-sidebar); ${priorityBorder}">
-                
-                ${isHigh ? `<div style="position:absolute; top:0; left:0; width:100%; height:3px; background:linear-gradient(90deg, transparent, #fbbf24, transparent); opacity:0.6;"></div>` : ''}
-
-                <div style="display:flex; align-items:flex-start; gap:14px; position:relative; z-index:1;">
-                    <div style="font-size:1.8rem; background:rgba(255,255,255,0.02); width:48px; height:48px; display:flex; align-items:center; justify-content:center; border-radius:10px; border:1px solid rgba(255,255,255,0.05); flex-shrink:0;">
-                        ${h.icon}
-                    </div>
-                    <div style="flex:1;">
-                        <div style="font-weight:800; font-size:1.05rem; color:var(--text); margin-bottom:4px; line-height:1.2; display:flex; align-items:center; gap:6px;">
-                            ${h.name}
-                            ${isHigh ? '<span title="High Priority" style="color:#fbbf24; font-size:0.9rem;">⭐️</span>' : ''}
-                        </div>
-                        <div style="font-size:0.7rem; color:var(--dim); font-weight:600; display:flex; align-items:center; gap:5px;">
-                            <span>⏱️ Last: <strong style="color:var(--text);opacity:0.8">${lastText}</strong></span>
-                        </div>
-                    </div>
-                    <div style="text-align:right;">
-                        ${stats.current > 0 ? `<div style="font-size:0.75rem; color:var(--amber); font-weight:800;">🔥 ${stats.current}d</div>` : ''}
-                    </div>
-                </div>
-
-                <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-top:4px; position:relative; z-index:1;">
-                    <div style="display:flex; flex-direction:column; gap:4px;">
-                        <div style="font-size:0.65rem; color:var(--dim); text-transform:uppercase; letter-spacing:0.5px; font-weight:700;">Consistency (This Week)</div>
-                        <div style="display:flex; gap:4px;">${sparklineHTML}</div>
-                    </div>
-                    <div style="text-align:right;">
-                        <div style="font-size:0.7rem; color:var(--dim); font-weight:700;">${totalDaysLogged} / ${target} Days</div>
-                    </div>
-                </div>
-
-                <div style="margin-top:auto; position:relative; z-index:1;">
-                    <div class="weekly-progress-bar-bg" style="height:8px; background:rgba(0,0,0,0.3); border-radius:20px; overflow:hidden; position:relative; border:1px solid rgba(255,255,255,0.03);">
-                        <div class="weekly-progress-bar-fill" style="height:100%; width:${progressPct}%; background:linear-gradient(90deg, ${h.color}cc, ${h.color}); border-radius:20px; transition:width 1s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 0 10px ${h.color}40;"></div>
-                    </div>
-                </div>
-
-                <div style="position:absolute; top:0; right:0; width:100px; height:100px; background:${isHigh ? '#fbbf24' : h.color}; opacity:${isHigh ? '0.04' : '0.02'}; filter:blur(50px); border-radius:50%;"></div>
+            <div class="dashboard-section" style="margin-bottom: 3rem;">
+                <h3 style="font-size:0.8rem; text-transform:uppercase; letter-spacing:1.5px; color:${section.color}; margin-bottom:1.5rem; display:flex; align-items:center; gap:10px; font-weight:800; opacity:0.8;">
+                    <span style="background:${section.color}20; width:24px; height:24px; display:flex; align-items:center; justify-content:center; border-radius:6px; font-size:0.9rem;">${section.icon}</span> 
+                    ${section.title}
+                </h3>
+                <div class="stat-grid">${section.habits.map(h => renderHabitCard(h, startOfWeek)).join('')}</div>
             </div>
         `;
     }).join('');
@@ -652,13 +595,87 @@ function renderDashboard() {
                     <div style="font-size: 1.5rem; font-weight: 800;">${totalSessionsAllTime}</div>
                     <div style="font-size: 0.7rem; color: var(--dim); text-transform: uppercase; letter-spacing: 1px;">Total Logs</div>
                 </div>
-            </div>
-        </div>
-        
         <div style="margin-top:2rem;">
-            <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap:1.5rem;">
-                ${habitCardsHTML}
+            ${sectionsHTML}
+        </div>
+        </div>
+    `;
+}
+
+function renderHabitCard(h, startOfWeek) {
+    const ss = sessions.filter(s => s.habitId === h.id && s.status === 'Approved');
+    const stats = computeStats(ss);
+    
+    const target = h.goal_target || 30;
+    const totalDaysLogged = new Set(ss.map(s => s.date)).size;
+    const progressPct = Math.min((totalDaysLogged / target) * 100, 100);
+
+    // Priority Styling
+    const isHigh = h.priority === 'high';
+    const priorityBorder = isHigh ? 'border: 1px solid rgba(251, 191, 36, 0.3); box-shadow: 0 8px 32px rgba(0,0,0,0.4); transform: translateY(-2px);' : 'border: 1px solid var(--border);';
+
+    // Last Logged Logic
+    const lastSession = [...ss].sort((a, b) => b.date.localeCompare(a.date) || b.time.localeCompare(a.time))[0];
+    let lastText = 'Never';
+    if (lastSession) {
+        const now = new Date(); now.setHours(0,0,0,0);
+        const sessionDate = new Date(lastSession.date); sessionDate.setHours(0,0,0,0);
+        const diffDays = Math.round((now - sessionDate) / 86400000);
+        const timeLabel = diffDays === 0 ? 'Today' : (diffDays === 1 ? 'Yesterday' : `${diffDays}d ago`);
+        const valLabel = lastSession.value != null ? `${lastSession.value} ${h.unit || ''}` : '';
+        lastText = valLabel ? `${valLabel} (${timeLabel})` : timeLabel;
+    }
+
+    // Mini 7-Day Sparkline
+    let sparklineHTML = '';
+    for (let i = 0; i < 7; i++) {
+        const d = new Date(startOfWeek); d.setDate(d.getDate() + i);
+        const ds = fmtDate(d);
+        const done = ss.some(s => s.date === ds);
+        sparklineHTML += `<div style="width:12px; height:12px; border-radius:3px; background:${done ? h.color : 'rgba(255,255,255,0.06)'}; box-shadow: ${done ? `0 0 8px ${h.color}40` : 'none'};" title="${ds}"></div>`;
+    }
+
+    return `
+        <div class="stat-card dashboard-habit-card ${isHigh ? 'priority-high' : ''}" onclick="selectHabit('${h.id}')" 
+             style="cursor:pointer; transition:all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); padding:1.25rem; display:flex; flex-direction:column; gap:12px; min-height:140px; position:relative; overflow:hidden; background: var(--bg-sidebar); ${priorityBorder}">
+            
+            ${isHigh ? `<div style="position:absolute; top:0; left:0; width:100%; height:3px; background:linear-gradient(90deg, transparent, #fbbf24, transparent); opacity:0.6;"></div>` : ''}
+
+            <div style="display:flex; align-items:flex-start; gap:14px; position:relative; z-index:1;">
+                <div style="font-size:1.8rem; background:rgba(255,255,255,0.02); width:48px; height:48px; display:flex; align-items:center; justify-content:center; border-radius:10px; border:1px solid rgba(255,255,255,0.05); flex-shrink:0;">
+                    ${h.icon}
+                </div>
+                <div style="flex:1;">
+                    <div style="font-weight:800; font-size:1.05rem; color:var(--text); margin-bottom:4px; line-height:1.2; display:flex; align-items:center; gap:6px;">
+                        ${h.name}
+                        ${isHigh ? '<span title="High Priority" style="color:#fbbf24; font-size:0.9rem;">⭐️</span>' : ''}
+                    </div>
+                    <div style="font-size:0.7rem; color:var(--dim); font-weight:600; display:flex; align-items:center; gap:5px;">
+                        <span>⏱️ Last: <strong style="color:var(--text);opacity:0.8">${lastText}</strong></span>
+                    </div>
+                </div>
+                <div style="text-align:right;">
+                    ${stats.current > 0 ? `<div style="font-size:0.75rem; color:var(--amber); font-weight:800;">🔥 ${stats.current}d</div>` : ''}
+                </div>
             </div>
+
+            <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-top:4px; position:relative; z-index:1;">
+                <div style="display:flex; flex-direction:column; gap:4px;">
+                    <div style="font-size:0.65rem; color:var(--dim); text-transform:uppercase; letter-spacing:0.5px; font-weight:700;">Consistency (This Week)</div>
+                    <div style="display:flex; gap:4px;">${sparklineHTML}</div>
+                </div>
+                <div style="text-align:right;">
+                    <div style="font-size:0.7rem; color:var(--dim); font-weight:700;">${totalDaysLogged} / ${target} Days</div>
+                </div>
+            </div>
+
+            <div style="margin-top:auto; position:relative; z-index:1;">
+                <div class="weekly-progress-bar-bg" style="height:8px; background:rgba(0,0,0,0.3); border-radius:20px; overflow:hidden; position:relative; border:1px solid rgba(255,255,255,0.03);">
+                    <div class="weekly-progress-bar-fill" style="height:100%; width:${progressPct}%; background:linear-gradient(90deg, ${h.color}cc, ${h.color}); border-radius:20px; transition:width 1s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 0 10px ${h.color}40;"></div>
+                </div>
+            </div>
+
+            <div style="position:absolute; top:0; right:0; width:100px; height:100px; background:${isHigh ? '#fbbf24' : h.color}; opacity:${isHigh ? '0.04' : '0.02'}; filter:blur(50px); border-radius:50%;"></div>
         </div>
     `;
 }
