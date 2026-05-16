@@ -693,7 +693,7 @@ function renderTable() {
         ${displayList.map(s => {
         const vd = s.value != null ? `<span class="value-tag" style="background:${h.color}20;color:${h.color}">${s.value}${h.unit ? ' ' + h.unit : ''}</span>` : '<span style="color:var(--dim)">—</span>';
         const mediaBtn = s.media ? `<button class="action-btn view-btn" onclick="openMedia('${s.id}')" style="background:${h.color}20; color:${h.color}">👁 View</button>` : '<span style="color:var(--dim); font-size:0.7rem">None</span>';
-        const statusLabel = s.status === 'Approved' ? `<span style="color:var(--green); font-size:0.75rem; font-weight:700; padding:2px 6px; background:var(--green-glow); border-radius:4px;">✓ Approved</span>` : `<span style="color:var(--dim); font-size:0.75rem; font-weight:600; padding:2px 6px; background:rgba(255,255,255,0.05); border-radius:4px;">Draft</span>`;
+        const statusLabel = s.status === 'Approved' ? `<span style="color:var(--green); font-size:0.75rem; font-weight:700; padding:2px 6px; background:var(--green-glow); border-radius:4px; white-space:nowrap;">✓ Approved</span>` : `<span style="color:var(--dim); font-size:0.75rem; font-weight:600; padding:2px 6px; background:rgba(255,255,255,0.05); border-radius:4px; white-space:nowrap;">Draft</span>`;
 
         const sessionTags = (s.tag_ids || []).map(tid => tags.find(t => t.id === tid)).filter(Boolean);
         const tagsHTML = sessionTags.map(t => `<span class="tag-pill">${t.name}</span>`).join('');
