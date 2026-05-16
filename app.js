@@ -561,7 +561,7 @@ function renderDashboard() {
                     <div style="flex:1; height:1px; background:linear-gradient(90deg, rgba(255,255,255,0.1), transparent);"></div>
                     <span style="font-size:0.7rem; color:var(--dim); font-weight:700; background:rgba(255,255,255,0.05); padding:3px 10px; border-radius:10px;">${section.habits.length}</span>
                 </div>
-                <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap:1.5rem;">
+                <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap:1.25rem;">
                     ${section.habits.map(h => renderHabitCard(h, startOfWeek)).join('')}
                 </div>
             </div>
@@ -620,7 +620,7 @@ function renderHabitCard(h, startOfWeek) {
 
     // Priority Styling
     const isHigh = h.priority === 'high';
-    const priorityBorder = isHigh ? 'border: 1px solid rgba(251, 191, 36, 0.3); box-shadow: 0 8px 32px rgba(0,0,0,0.4); transform: translateY(-2px);' : 'border: 1px solid var(--border);';
+    const priorityBorder = isHigh ? 'border: 1px solid rgba(251, 191, 36, 0.3); box-shadow: 0 4px 20px rgba(0,0,0,0.3); transform: translateY(-1px);' : 'border: 1px solid var(--border);';
 
     // Last Logged Logic
     const lastSession = [...ss].sort((a, b) => b.date.localeCompare(a.date) || b.time.localeCompare(a.time))[0];
@@ -645,9 +645,9 @@ function renderHabitCard(h, startOfWeek) {
 
     return `
         <div class="stat-card dashboard-habit-card ${isHigh ? 'priority-high' : ''}" onclick="selectHabit('${h.id}')" 
-             style="cursor:pointer; transition:all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); padding:1.25rem; display:flex; flex-direction:column; gap:12px; min-height:140px; position:relative; overflow:hidden; background: var(--bg-sidebar); ${priorityBorder}">
+             style="cursor:pointer; transition:all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); padding:1rem; display:flex; flex-direction:column; gap:10px; min-height:130px; position:relative; overflow:hidden; background: var(--bg-sidebar); ${priorityBorder}">
             
-            ${isHigh ? `<div style="position:absolute; top:0; left:0; width:100%; height:3px; background:linear-gradient(90deg, transparent, #fbbf24, transparent); opacity:0.6;"></div>` : ''}
+            ${isHigh ? `<div style="position:absolute; top:0; left:0; width:100%; height:2px; background:linear-gradient(90deg, transparent, #fbbf24, transparent); opacity:0.6;"></div>` : ''}
 
             <div style="display:flex; align-items:flex-start; gap:14px; position:relative; z-index:1;">
                 <div style="font-size:1.8rem; background:rgba(255,255,255,0.02); width:48px; height:48px; display:flex; align-items:center; justify-content:center; border-radius:10px; border:1px solid rgba(255,255,255,0.05); flex-shrink:0;">
