@@ -30,31 +30,33 @@ initTheme();
 // ── Persistence (Cloud) ──────────────────────────────────
 const loadData = async () => {
     try {
-        const { data: hData, error: hErr } = await sbClient.from('habits').select('*');
-        const { data: sData, error: sErr } = await sbClient.from('sessions').select('*');
+        // Parallel fetch all tables for faster loading
+        const [hRes, sRes, tRes, mRes, gRes, rRes, qRes, moRes, enRes] = await Promise.all([
+            sbClient.from('habits').select('*'),
+            sbClient.from('sessions').select('*'),
+            sbClient.from('tags').select('*'),
+            sbClient.from('milestones').select('*'),
+            sbClient.from('habit_groups').select('*'),
+            sbClient.from('reflections').select('*'),
+            sbClient.from('daily_quotes').select('*'),
+            sbClient.from('mood').select('*'),
+            sbClient.from('energy').select('*'),
+        ]);
 
         // Log errors but don't crash if tables/columns are missing
-        if (hErr) console.warn("Habits table error:", hErr.message);
-        if (sErr) console.warn("Sessions table error:", sErr.message);
+        if (hRes.error) console.warn("Habits table error:", hRes.error.message);
+        if (sRes.error) console.warn("Sessions table error:", sRes.error.message);
 
-        const { data: tData } = await sbClient.from('tags').select('*');
-        const { data: mData } = await sbClient.from('milestones').select('*');
-        const { data: gData } = await sbClient.from('habit_groups').select('*');
-        const { data: rData } = await sbClient.from('reflections').select('*');
-        const { data: qData } = await sbClient.from('daily_quotes').select('*');
-        const { data: moodData } = await sbClient.from('mood').select('*');
-        const { data: energyData } = await sbClient.from('energy').select('*');
-
-        habits = (hData || []).filter(h => !h.is_deleted);
+        habits = (hRes.data || []).filter(h => !h.is_deleted);
         const validHabitIds = new Set(habits.map(h => h.id));
-        sessions = (sData || []).filter(s => validHabitIds.has(s.habit_id) && !s.is_deleted).map(s => ({ ...s, habitId: s.habit_id }));
-        tags = tData || [];
-        milestones = mData || [];
-        habitGroups = gData || [];
-        reflections = rData || [];
-        dailyQuotes = qData || [];
-        moods = (moodData || []).sort((a, b) => a.value - b.value);
-        energies = (energyData || []).sort((a, b) => a.value - b.value);
+        sessions = (sRes.data || []).filter(s => validHabitIds.has(s.habit_id) && !s.is_deleted).map(s => ({ ...s, habitId: s.habit_id }));
+        tags = tRes.data || [];
+        milestones = mRes.data || [];
+        habitGroups = gRes.data || [];
+        reflections = rRes.data || [];
+        dailyQuotes = qRes.data || [];
+        moods = (moRes.data || []).sort((a, b) => a.value - b.value);
+        energies = (enRes.data || []).sort((a, b) => a.value - b.value);
 
         // Migration: If Cloud is empty but localStorage has data, push to Cloud
         const localHabits = JSON.parse(localStorage.getItem('tp_habits') || '[]');
@@ -85,6 +87,62 @@ const loadData = async () => {
 const closeModal = id => document.getElementById(id).classList.remove('open');
 const openModal = id => document.getElementById(id).classList.add('open');
 const fmtDate = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+
+// ── Toast Notifications ──────────────────────────────────
+function showToast(message, type = 'success') {
+    const container = document.getElementById('toastContainer');
+    if (!container) return;
+    const icons = { success: '✅', error: '❌', info: 'ℹ️' };
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.innerHTML = `<span class="toast-icon">${icons[type] || icons.info}</span><span>${message}</span>`;
+    container.appendChild(toast);
+    setTimeout(() => {
+        toast.classList.add('toast-out');
+        setTimeout(() => toast.remove(), 300);
+    }, 2500);
+}
+
+// ── Loading Overlay ──────────────────────────────────────
+function showLoading() {
+    const el = document.getElementById('loadingOverlay');
+    if (el) el.classList.remove('hidden');
+}
+function hideLoading() {
+    const el = document.getElementById('loadingOverlay');
+    if (el) el.classList.add('hidden');
+}
+
+// ── Confetti Effect ──────────────────────────────────────
+function fireConfetti() {
+    const count = 40;
+    const container = document.body;
+    for (let i = 0; i < count; i++) {
+        const confetti = document.createElement('div');
+        const colors = ['#6366f1', '#a855f7', '#22c55e', '#f59e0b', '#ec4899', '#06b6d4'];
+        Object.assign(confetti.style, {
+            position: 'fixed',
+            width: '8px',
+            height: '8px',
+            background: colors[Math.floor(Math.random() * colors.length)],
+            borderRadius: Math.random() > 0.5 ? '50%' : '2px',
+            left: (40 + Math.random() * 20) + '%',
+            top: '-10px',
+            zIndex: '9998',
+            pointerEvents: 'none',
+            opacity: '1',
+            transition: `all ${0.8 + Math.random() * 1.2}s cubic-bezier(0.25, 0.46, 0.45, 0.94)`,
+        });
+        container.appendChild(confetti);
+        requestAnimationFrame(() => {
+            confetti.style.left = (10 + Math.random() * 80) + '%';
+            confetti.style.top = (60 + Math.random() * 40) + '%';
+            confetti.style.opacity = '0';
+            confetti.style.transform = `rotate(${Math.random() * 720}deg) scale(0.3)`;
+        });
+        setTimeout(() => confetti.remove(), 2200);
+    }
+}
 
 async function compressImage(file, maxWidth = 1200, maxHeight = 1200, quality = 0.7) {
     if (!file.type.startsWith('image/')) return file; // Only compress images
@@ -138,8 +196,10 @@ function initPickers() {
 
 // ── Init ───────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
+    showLoading();
     initPickers();
     await loadData();
+    hideLoading();
     renderSidebar();
     renderSidebarTags();
     if (habits.length > 0) {
@@ -251,6 +311,7 @@ async function quickLog(habitId) {
     renderSidebar();
     if (activeHabit === habitId) renderMain();
     fireConfetti();
+    showToast('⚡ Quick log added as Draft');
 
     // Background Cloud Sync
     const { error } = await sbClient.from('sessions').insert({
@@ -451,7 +512,7 @@ function renderMain() {
 function renderDashboard() {
     const main = document.getElementById('mainContent');
     const activeHabitsList = habits.filter(h => h && h.is_archived !== true);
-    
+
     if (activeHabitsList.length === 0) { renderWelcome(); return; }
 
     const quote = dailyQuotes.length > 0 ? dailyQuotes[Math.floor(Math.random() * dailyQuotes.length)] : { text: "Excellence is not an act, but a habit.", author: "Aristotle" };
@@ -649,9 +710,9 @@ function switchYear(y) {
 function getTimeOfDay(createdAt) {
     if (!createdAt) return { symbol: '—', label: '', cls: '' };
     const hour = new Date(createdAt).getHours();
-    if (hour >= 5 && hour < 12)  return { symbol: '🌅', label: 'Morning',   cls: 'time-morning'   };
+    if (hour >= 5 && hour < 12) return { symbol: '🌅', label: 'Morning', cls: 'time-morning' };
     if (hour >= 12 && hour < 18) return { symbol: '☀️', label: 'Afternoon', cls: 'time-afternoon' };
-    return                              { symbol: '🌙', label: 'Night',     cls: 'time-night'     };
+    return { symbol: '🌙', label: 'Night', cls: 'time-night' };
 }
 
 function renderTimeOfDayBreakdown(ss, h) {
@@ -659,9 +720,9 @@ function renderTimeOfDayBreakdown(ss, h) {
     if (approved.length === 0) return '';
 
     const buckets = [
-        { key: 'morning',   symbol: '🌅', label: 'Morning',   cls: 'time-morning',   range: '5 AM – 12 PM',  count: 0, totalVal: 0, valCount: 0 },
-        { key: 'afternoon', symbol: '☀️', label: 'Afternoon', cls: 'time-afternoon', range: '12 PM – 6 PM',  count: 0, totalVal: 0, valCount: 0 },
-        { key: 'night',     symbol: '🌙', label: 'Night',     cls: 'time-night',     range: '6 PM – 5 AM',   count: 0, totalVal: 0, valCount: 0 },
+        { key: 'morning', symbol: '🌅', label: 'Morning', cls: 'time-morning', range: '5 AM – 12 PM', count: 0, totalVal: 0, valCount: 0 },
+        { key: 'afternoon', symbol: '☀️', label: 'Afternoon', cls: 'time-afternoon', range: '12 PM – 6 PM', count: 0, totalVal: 0, valCount: 0 },
+        { key: 'night', symbol: '🌙', label: 'Night', cls: 'time-night', range: '6 PM – 5 AM', count: 0, totalVal: 0, valCount: 0 },
     ];
 
     approved.forEach(s => {
@@ -754,8 +815,8 @@ function renderTable() {
         <th>Time</th>
         <th onclick="doSort('value')">Value${sortField === 'value' ? (sortDir === 'desc' ? ' ↓' : ' ↑') : ''}</th>
         <th>Status</th>
-        <th>Tags</th>
-        <th>Evidence</th>
+        <th class="col-tags">Tags</th>
+        <th class="col-evidence">Evidence</th>
         <th>Notes</th>
         <th>Actions</th></tr></thead><tbody>
         ${displayList.map(s => {
@@ -781,8 +842,8 @@ function renderTable() {
                 <td><span class="time-of-day-badge ${tod.cls}" title="${tod.label}">${tod.symbol}<span class="tod-label">${tod.label}</span></span></td>
                 <td>${vd}</td>
                 <td>${statusLabel}</td>
-                <td>${tagsHTML}</td>
-                <td>${mediaBtn}</td>
+                <td class="col-tags">${tagsHTML}</td>
+                <td class="col-evidence">${mediaBtn}</td>
                 <td style="color:var(--dim);font-size:0.78rem;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.notes || '—'}</td>
                 <td style="white-space:nowrap">
                     ${actionsHTML}
@@ -835,19 +896,19 @@ function renderAchievements(habit, stats) {
 }
 
 // ── Add Habit ──────────────────────────────────────────
-function openAddHabitModal() { 
+function openAddHabitModal() {
     initGroupDropdowns();
-    openModal('addHabitModal'); 
-    document.getElementById('habitName').value=''; 
-    document.getElementById('habitUnit').value=''; 
-    document.getElementById('habitDesc').value='';
-    document.getElementById('habitGoalType').value='count';
-    document.getElementById('habitGoalTarget').value='';
+    openModal('addHabitModal');
+    document.getElementById('habitName').value = '';
+    document.getElementById('habitUnit').value = '';
+    document.getElementById('habitDesc').value = '';
+    document.getElementById('habitGoalType').value = 'count';
+    document.getElementById('habitGoalTarget').value = '';
     document.getElementById('habitTimeBreakdown').checked = false;
     // Reset Pickers
-    document.querySelectorAll('#iconPicker .icon-opt').forEach((o,i)=>o.classList.toggle('selected',i===0));
-    document.querySelectorAll('#colorPicker .color-opt').forEach((o,i)=>o.classList.toggle('selected',i===0));
-    setTimeout(()=>document.getElementById('habitName').focus(),100); 
+    document.querySelectorAll('#iconPicker .icon-opt').forEach((o, i) => o.classList.toggle('selected', i === 0));
+    document.querySelectorAll('#colorPicker .color-opt').forEach((o, i) => o.classList.toggle('selected', i === 0));
+    setTimeout(() => document.getElementById('habitName').focus(), 100);
 }
 
 function initGroupDropdowns() {
@@ -868,10 +929,10 @@ async function handleAddHabit(e) {
     const color = document.querySelector('#colorPicker .color-opt.selected')?.dataset.color || '#22c55e';
     const goal_type = document.getElementById('habitGoalType').value;
     const goal_target = document.getElementById('habitGoalTarget').value;
-    
+
     if (!name) return;
     const id = 'h_' + Date.now();
-    const { error } = await sbClient.from('habits').insert({ 
+    const { error } = await sbClient.from('habits').insert({
         id, name, icon, unit, description, color,
         goal_type, goal_target: goal_target ? parseFloat(goal_target) : null,
         is_archived: false,
@@ -885,15 +946,17 @@ async function handleAddHabit(e) {
         return;
     }
 
-    await loadData(); 
-    activeHabit = id; 
-    closeModal('addHabitModal'); 
-    renderSidebar(); 
+    await loadData();
+    activeHabit = id;
+    closeModal('addHabitModal');
+    renderSidebar();
     renderMain();
+    showToast(`${icon} ${name} created!`);
+    fireConfetti();
 }
 
 function openEditHabit(id) {
-    const h = habits.find(x=>x.id===id);
+    const h = habits.find(x => x.id === id);
     if (!h) return;
     document.getElementById('editHabitName').value = h.name;
     document.getElementById('editHabitUnit').value = h.unit || '';
@@ -902,13 +965,14 @@ function openEditHabit(id) {
     document.getElementById('editHabitGoalTarget').value = h.goal_target || '';
     document.getElementById('archiveHabitBtn').textContent = h.is_archived ? 'Unarchive' : 'Archive';
     // Set Pickers
+    document.querySelectorAll('#editIconPicker .icon-opt').forEach(o => o.classList.toggle('selected', o.dataset.icon === h.icon));
     document.querySelectorAll('#editColorPicker .color-opt').forEach(o => o.classList.toggle('selected', o.dataset.color === h.color));
     document.getElementById('editHabitModal').dataset.habitId = id;
-    
+
     initGroupDropdowns();
     document.getElementById('editHabitGroup').value = h.group_id || '';
     document.getElementById('editHabitTimeBreakdown').checked = !!h.show_time_breakdown;
-    
+
     renderEditMilestones(id);
     openModal('editHabitModal');
 }
@@ -924,14 +988,16 @@ async function handleEditHabit(e) {
     const goal_type = document.getElementById('editHabitGoalType').value;
     const goal_target = document.getElementById('editHabitGoalTarget').value;
     const group_id = document.getElementById('editHabitGroup').value || null;
-    
-    await sbClient.from('habits').update({ 
+
+    const { error } = await sbClient.from('habits').update({
         name, icon, unit, description, color,
         goal_type, goal_target: goal_target ? parseFloat(goal_target) : null,
         group_id,
         show_time_breakdown: document.getElementById('editHabitTimeBreakdown').checked
     }).eq('id', id);
+    if (error) { showToast('Failed to save: ' + error.message, 'error'); return; }
     await loadData(); closeModal('editHabitModal'); renderSidebar(); renderMain();
+    showToast('Habit updated!');
 }
 
 function confirmDeleteHabit() {
@@ -946,7 +1012,7 @@ function confirmDeleteHabit() {
     const isLocked = diffDays <= 7;
 
     closeModal('editHabitModal');
-    
+
     const titleEl = document.getElementById('deleteTitle');
     const descEl = document.getElementById('deleteDesc');
     const confirmBtn = document.getElementById('confirmDeleteBtn');
@@ -954,61 +1020,61 @@ function confirmDeleteHabit() {
     if (isLocked) {
         titleEl.textContent = '🔒 Habit Locked';
         descEl.innerHTML = `To build consistency, you cannot delete a habit in its first 7 days.< br > <br><strong>${8 - diffDays} days remaining</strong> until you can remove this.`;
-            confirmBtn.style.display = 'none';
+        confirmBtn.style.display = 'none';
     } else {
-                titleEl.textContent = 'Delete Habit?';
-            descEl.textContent = 'This will hide the habit and all its sessions. It will not be permanently removed.';
-            confirmBtn.style.display = 'block';
+        titleEl.textContent = 'Delete Habit?';
+        descEl.textContent = 'This will hide the habit and all its sessions. It will not be permanently removed.';
+        confirmBtn.style.display = 'block';
         confirmBtn.onclick = async () => {
-                // Soft delete: update is_deleted flag instead of calling .delete()
-                await sbClient.from('habits').update({ is_deleted: true }).eq('id', id);
+            // Soft delete: update is_deleted flag instead of calling .delete()
+            await sbClient.from('habits').update({ is_deleted: true }).eq('id', id);
             await loadData();
             activeHabit = habits.length ? habits[0].id : null;
             closeModal('deleteModal'); renderSidebar();
             if (activeHabit) renderMain(); else renderWelcome();
         };
     }
-            openModal('deleteModal');
+    openModal('deleteModal');
 }
 
-            async function toggleArchiveHabit() {
+async function toggleArchiveHabit() {
     const id = document.getElementById('editHabitModal').dataset.habitId;
     const h = habits.find(x => x.id === id);
-            if (!h) return;
+    if (!h) return;
 
-            const isNowArchived = !h.is_archived;
-            await sbClient.from('habits').update({is_archived: isNowArchived }).eq('id', id);
-            await loadData();
-            closeModal('editHabitModal');
+    const isNowArchived = !h.is_archived;
+    await sbClient.from('habits').update({ is_archived: isNowArchived }).eq('id', id);
+    await loadData();
+    closeModal('editHabitModal');
 
-            // If we just archived the currently active habit, switch away from it if possible
-            if (isNowArchived && activeHabit === id) {
+    // If we just archived the currently active habit, switch away from it if possible
+    if (isNowArchived && activeHabit === id) {
         const firstActive = habits.find(x => !x.is_archived);
-            activeHabit = firstActive ? firstActive.id : (habits.length ? habits[0].id : null);
+        activeHabit = firstActive ? firstActive.id : (habits.length ? habits[0].id : null);
     }
 
-            renderSidebar();
-            if (activeHabit) renderMain(); else renderWelcome();
+    renderSidebar();
+    if (activeHabit) renderMain(); else renderWelcome();
 }
 
-            // ── Log Session ────────────────────────────────────────
-            function openLogSession() {
-    const h = habits.find(x=>x.id===activeHabit);
-            if (!h) return;
-            document.getElementById('logModalTitle').textContent = `Log — ${h.icon} ${h.name}`;
-            document.getElementById('logUnitHint').textContent = h.unit ? `(${h.unit})` : '(optional)';
-            document.getElementById('logDate').valueAsDate = new Date();
-            document.getElementById('logValue').value = '';
-            document.getElementById('logNotes').value = '';
-            document.getElementById('logFile').value = '';
-            document.getElementById('uploadStatus').textContent = '';
-            renderTagSelectors('logTagSelector');
-            openModal('logModal');
+// ── Log Session ────────────────────────────────────────
+function openLogSession() {
+    const h = habits.find(x => x.id === activeHabit);
+    if (!h) return;
+    document.getElementById('logModalTitle').textContent = `Log — ${h.icon} ${h.name}`;
+    document.getElementById('logUnitHint').textContent = h.unit ? `(${h.unit})` : '(optional)';
+    document.getElementById('logDate').valueAsDate = new Date();
+    document.getElementById('logValue').value = '';
+    document.getElementById('logNotes').value = '';
+    document.getElementById('logFile').value = '';
+    document.getElementById('uploadStatus').textContent = '';
+    renderTagSelectors('logTagSelector');
+    openModal('logModal');
 }
 
-            function renderTagSelectors(containerId, selectedIds = []) {
+function renderTagSelectors(containerId, selectedIds = []) {
     const el = document.getElementById(containerId);
-            if (!el) return;
+    if (!el) return;
     el.innerHTML = tags.map(t => `
             <div class="tag-opt ${selectedIds.includes(t.id) ? 'selected' : ''}"
                 onclick="this.classList.toggle('selected')"
@@ -1016,235 +1082,241 @@ function confirmDeleteHabit() {
             `).join('');
 }
 
-            async function handleLogSubmit(e) {
-                e.preventDefault();
-            const submitBtn = e.target.querySelector('button[type="submit"]');
-            const statusEl = document.getElementById('uploadStatus');
-            const date = document.getElementById('logDate').value;
-            const value = document.getElementById('logValue').value;
-            const notes = document.getElementById('logNotes').value.trim();
-            const fileInput = document.getElementById('logFile');
-    
+async function handleLogSubmit(e) {
+    e.preventDefault();
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const statusEl = document.getElementById('uploadStatus');
+    const date = document.getElementById('logDate').value;
+    const value = document.getElementById('logValue').value;
+    const notes = document.getElementById('logNotes').value.trim();
+    const fileInput = document.getElementById('logFile');
+
     const tagIds = Array.from(document.querySelectorAll('#logTagSelector .tag-opt.selected')).map(el => el.dataset.id);
 
-            if (!date) return;
-            let mediaUrl = null;
+    if (!date) return;
+    let mediaUrl = null;
 
     if (fileInput.files.length > 0) {
-                submitBtn.disabled = true;
-            statusEl.textContent = '📤 Optimizing & Uploading...';
-            let file = fileInput.files[0];
+        submitBtn.disabled = true;
+        statusEl.textContent = '📤 Optimizing & Uploading...';
+        let file = fileInput.files[0];
 
-            // Resize if it's an image
-            if (file.type.startsWith('image/')) {
-            try {file = await compressImage(file); } catch (e) {console.error("Compression failed", e); }
+        // Resize if it's an image
+        if (file.type.startsWith('image/')) {
+            try { file = await compressImage(file); } catch (e) { console.error("Compression failed", e); }
         }
 
-            const ext = file.name.split('.').pop();
-            const fileName = `${Date.now()}.${ext}`;
-            const {data, error} = await sbClient.storage.from('evidence').upload(fileName, file);
-            if (error) {showAlert('Upload Error', error.message); submitBtn.disabled = false; return; }
-            const {data: {publicUrl} } = sbClient.storage.from('evidence').getPublicUrl(fileName);
-            mediaUrl = publicUrl;
+        const ext = file.name.split('.').pop();
+        const fileName = `${Date.now()}.${ext}`;
+        const { data, error } = await sbClient.storage.from('evidence').upload(fileName, file);
+        if (error) { showAlert('Upload Error', error.message); submitBtn.disabled = false; return; }
+        const { data: { publicUrl } } = sbClient.storage.from('evidence').getPublicUrl(fileName);
+        mediaUrl = publicUrl;
     }
 
-            const id = 's_'+Date.now();
-            const {error: insertErr } = await sbClient.from('sessions').insert({
-                id,
-                habit_id: activeHabit,
-            date,
-            value: value ? parseFloat(value) : null,
-            notes,
-            media: mediaUrl,
-            time: new Date().toTimeString().substring(0,5),
-            status: 'Draft',
-            tag_ids: tagIds,
-            is_deleted: false
+    const id = 's_' + Date.now();
+    const { error: insertErr } = await sbClient.from('sessions').insert({
+        id,
+        habit_id: activeHabit,
+        date,
+        value: value ? parseFloat(value) : null,
+        notes,
+        media: mediaUrl,
+        time: new Date().toTimeString().substring(0, 5),
+        status: 'Draft',
+        tag_ids: tagIds,
+        is_deleted: false
     });
 
-            if (insertErr) {
-                showAlert('Save Failed', 'Could not save to Cloud: ' + insertErr.message);
-            submitBtn.disabled = false;
-            return;
+    if (insertErr) {
+        showAlert('Save Failed', 'Could not save to Cloud: ' + insertErr.message);
+        submitBtn.disabled = false;
+        return;
     }
 
-            await loadData();
-            submitBtn.disabled = false;
-            closeModal('logModal'); renderSidebar(); renderMain();
+    await loadData();
+    submitBtn.disabled = false;
+    closeModal('logModal'); renderSidebar(); renderMain();
+    showToast('Session logged!');
+    fireConfetti();
 }
 
-            // ── Edit Session ──────────────────────────────────────
-            function openEditSession(id) {
+// ── Edit Session ──────────────────────────────────────
+function openEditSession(id) {
     const s = sessions.find(x => x.id === id);
     const h = habits.find(x => x.id === s.habitId);
-            if (!s || !h) return;
+    if (!s || !h) return;
 
-            document.getElementById('editSessionId').value = s.id;
-            document.getElementById('editLogDate').value = s.date;
-            document.getElementById('editLogValue').value = s.value || '';
-            document.getElementById('editLogNotes').value = s.notes || '';
-            document.getElementById('editLogUnitHint').textContent = h.unit ? `(${h.unit})` : '';
-            document.getElementById('editLogFile').value = '';
-            document.getElementById('editUploadStatus').textContent = '';
+    document.getElementById('editSessionId').value = s.id;
+    document.getElementById('editLogDate').value = s.date;
+    document.getElementById('editLogValue').value = s.value || '';
+    document.getElementById('editLogNotes').value = s.notes || '';
+    document.getElementById('editLogUnitHint').textContent = h.unit ? `(${h.unit})` : '';
+    document.getElementById('editLogFile').value = '';
+    document.getElementById('editUploadStatus').textContent = '';
 
-            renderTagSelectors('editLogTagSelector', s.tag_ids || []);
+    renderTagSelectors('editLogTagSelector', s.tag_ids || []);
 
-            const preview = document.getElementById('editMediaPreview');
-            if (s.media) {
+    const preview = document.getElementById('editMediaPreview');
+    if (s.media) {
         const isVid = s.media.toLowerCase().match(/\.(mp4|mov|webm)$/);
-            preview.innerHTML = `
+        preview.innerHTML = `
             <div style="position:relative; display:inline-block">
                 ${isVid ? `<video src="${s.media}" style="height:60px; border-radius:4px"></video>` : `<img src="${s.media}" style="height:60px; border-radius:4px">`}
                 <button type="button" onclick="removeEditMedia()" style="position:absolute; top:-5px; right:-5px; background:var(--red); color:white; border:none; border-radius:50%; width:18px; height:18px; font-size:10px; cursor:pointer">✕</button>
             </div>
             `;
-            preview.dataset.currentMedia = s.media;
+        preview.dataset.currentMedia = s.media;
     } else {
-                preview.innerHTML = '';
-            preview.dataset.currentMedia = '';
+        preview.innerHTML = '';
+        preview.dataset.currentMedia = '';
     }
 
-            openModal('editSessionModal');
+    openModal('editSessionModal');
 }
 
-            function removeEditMedia() {
+function removeEditMedia() {
     const preview = document.getElementById('editMediaPreview');
-            preview.innerHTML = '';
-            preview.dataset.currentMedia = '';
+    preview.innerHTML = '';
+    preview.dataset.currentMedia = '';
 }
 
-            async function handleEditSession(e) {
-                e.preventDefault();
-            const id = document.getElementById('editSessionId').value;
-            const date = document.getElementById('editLogDate').value;
-            const value = document.getElementById('editLogValue').value;
-            const notes = document.getElementById('editLogNotes').value.trim();
-            const fileInput = document.getElementById('editLogFile');
-            const preview = document.getElementById('editMediaPreview');
-            let mediaUrl = preview.dataset.currentMedia;
+async function handleEditSession(e) {
+    e.preventDefault();
+    const id = document.getElementById('editSessionId').value;
+    const date = document.getElementById('editLogDate').value;
+    const value = document.getElementById('editLogValue').value;
+    const notes = document.getElementById('editLogNotes').value.trim();
+    const fileInput = document.getElementById('editLogFile');
+    const preview = document.getElementById('editMediaPreview');
+    let mediaUrl = preview.dataset.currentMedia;
 
     const tagIds = Array.from(document.querySelectorAll('#editLogTagSelector .tag-opt.selected')).map(el => el.dataset.id);
 
-            if (!date) return;
+    if (!date) return;
 
-            const submitBtn = document.getElementById('saveEditSessionBtn');
-            submitBtn.disabled = true;
-            document.getElementById('editUploadStatus').textContent = fileInput.files.length ? 'Uploading new evidence...' : '';
+    const submitBtn = document.getElementById('saveEditSessionBtn');
+    submitBtn.disabled = true;
+    document.getElementById('editUploadStatus').textContent = fileInput.files.length ? 'Uploading new evidence...' : '';
 
     if (fileInput.files.length > 0) {
-                let file = fileInput.files[0];
-            if (file.type.startsWith('image/')) {
-            try {file = await compressImage(file); } catch (e) {console.error("Compression failed", e); }
+        let file = fileInput.files[0];
+        if (file.type.startsWith('image/')) {
+            try { file = await compressImage(file); } catch (e) { console.error("Compression failed", e); }
         }
 
-            const path = `evidence/${Date.now()}_${file.name}`;
-            await sbClient.storage.from('evidence').upload(path, file);
-            const {data: {publicUrl} } = sbClient.storage.from('evidence').getPublicUrl(path);
-            mediaUrl = publicUrl;
+        const path = `evidence/${Date.now()}_${file.name}`;
+        await sbClient.storage.from('evidence').upload(path, file);
+        const { data: { publicUrl } } = sbClient.storage.from('evidence').getPublicUrl(path);
+        mediaUrl = publicUrl;
     }
 
     // Optimistic Update
     const idx = sessions.findIndex(x => x.id === id);
-            if (idx !== -1) {
-                sessions[idx].date = date;
-            sessions[idx].value = value ? parseFloat(value) : null;
-            sessions[idx].notes = notes;
-            sessions[idx].media = mediaUrl;
+    if (idx !== -1) {
+        sessions[idx].date = date;
+        sessions[idx].value = value ? parseFloat(value) : null;
+        sessions[idx].notes = notes;
+        sessions[idx].media = mediaUrl;
     }
-            closeModal('editSessionModal');
-            renderMain();
+    closeModal('editSessionModal');
+    renderMain();
 
-            // Cloud Update
-            await sbClient.from('sessions').update({
-                date,
-                value: value ? parseFloat(value) : null,
-            notes,
-            media: mediaUrl,
-            tag_ids: tagIds
+    // Cloud Update
+    const { error } = await sbClient.from('sessions').update({
+        date,
+        value: value ? parseFloat(value) : null,
+        notes,
+        media: mediaUrl,
+        tag_ids: tagIds
     }).eq('id', id);
 
-            await loadData();
-            submitBtn.disabled = false;
-            renderMain();
+    if (error) { showToast('Save failed: ' + error.message, 'error'); }
+    await loadData();
+    submitBtn.disabled = false;
+    renderMain();
+    if (!error) showToast('Session updated!');
 }
 
-            // ── Media Review ───────────────────────────────────────
-            function openMedia(sessionId) {
+// ── Media Review ───────────────────────────────────────
+function openMedia(sessionId) {
     const s = sessions.find(x => x.id === sessionId);
-            if (!s || !s.media) return;
-            const viewer = document.getElementById('mediaViewer');
-            const notes = document.getElementById('mediaNotes');
-            const title = document.getElementById('mediaModalTitle');
+    if (!s || !s.media) return;
+    const viewer = document.getElementById('mediaViewer');
+    const notes = document.getElementById('mediaNotes');
+    const title = document.getElementById('mediaModalTitle');
     const h = habits.find(x => x.id === s.habitId);
 
-            title.textContent = `${h?.icon || '📝'} Session — ${s.date}`;
-            notes.textContent = s.notes || 'No notes.';
-            const isVideo = s.media.match(/\.(mp4|webm|ogg|mov)/i);
-            viewer.innerHTML = isVideo ? `<video src="${s.media}" controls style="max-width:100%; max-height:70vh;"></video>` : `<img src="${s.media}" style="max-width:100%; max-height:70vh; object-fit:contain;">`;
-                openModal('mediaModal');
+    title.textContent = `${h?.icon || '📝'} Session — ${s.date}`;
+    notes.textContent = s.notes || 'No notes.';
+    const isVideo = s.media.match(/\.(mp4|webm|ogg|mov)/i);
+    viewer.innerHTML = isVideo ? `<video src="${s.media}" controls style="max-width:100%; max-height:70vh;"></video>` : `<img src="${s.media}" style="max-width:100%; max-height:70vh; object-fit:contain;">`;
+    openModal('mediaModal');
 }
 
-                // ── Delete Session ─────────────────────────────────────
-                function confirmDeleteSession(id) {
+// ── Delete Session ─────────────────────────────────────
+function confirmDeleteSession(id) {
     const s = sessions.find(x => x.id === id);
-                if (s && s.status === 'Approved') {
-                    showAlert("Notice", "Approved sessions cannot be deleted.");
-                return;
+    if (s && s.status === 'Approved') {
+        showAlert("Notice", "Approved sessions cannot be deleted.");
+        return;
     }
-                document.getElementById('deleteTitle').textContent = 'Delete Session?';
-                document.getElementById('deleteDesc').textContent = 'This will hide the session. It will not be permanently removed.';
-                const confirmBtn = document.getElementById('confirmDeleteBtn');
-                confirmBtn.style.display = 'block';
-                openModal('deleteModal');
+    document.getElementById('deleteTitle').textContent = 'Delete Session?';
+    document.getElementById('deleteDesc').textContent = 'This will hide the session. It will not be permanently removed.';
+    const confirmBtn = document.getElementById('confirmDeleteBtn');
+    confirmBtn.style.display = 'block';
+    openModal('deleteModal');
     confirmBtn.onclick = async () => {
-                    // Soft delete for sessions
-                    await sbClient.from('sessions').update({ is_deleted: true }).eq('id', id);
-                await loadData(); closeModal('deleteModal'); renderSidebar(); renderMain();
+        // Soft delete for sessions
+        await sbClient.from('sessions').update({ is_deleted: true }).eq('id', id);
+        await loadData(); closeModal('deleteModal'); renderSidebar(); renderMain();
     };
 }
 
-                function approveSession(id) {
+function approveSession(id) {
     const confirmBtn = document.getElementById('confirmApproveBtn');
-                openModal('approveModal');
-    
+    openModal('approveModal');
+
     confirmBtn.onclick = async () => {
-                    closeModal('approveModal');
+        closeModal('approveModal');
         // Optimistic Update
         const idx = sessions.findIndex(x => x.id === id);
-                if (idx !== -1) sessions[idx].status = 'Approved';
-                renderMain();
+        if (idx !== -1) sessions[idx].status = 'Approved';
+        renderMain();
 
-                // Cloud Sync
-                await sbClient.from('sessions').update({status: 'Approved' }).eq('id', id);
-                await loadData();
-                renderMain();
+        // Cloud Sync
+        const { error } = await sbClient.from('sessions').update({ status: 'Approved' }).eq('id', id);
+        if (error) { showToast('Approve failed: ' + error.message, 'error'); }
+        else { showToast('Session approved! ✓'); }
+        await loadData();
+        renderMain();
     };
 }
 
-                // ── Export / Import ────────────────────────────────────
-                function exportData() {
-    const blob = new Blob([JSON.stringify({habits, sessions},null,2)], {type:'application/json'});
-                const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-                a.download = `trackpro_cloud_backup.json`; a.click(); URL.revokeObjectURL(a.href);
+// ── Export / Import ────────────────────────────────────
+function exportData() {
+    const blob = new Blob([JSON.stringify({ habits, sessions }, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    a.download = `trackpro_cloud_backup.json`; a.click(); URL.revokeObjectURL(a.href);
 }
-                async function importData(e) {
-                    showAlert('Notice', 'Import disabled for Cloud version to prevent conflicts. Use the dashboard to add data!');
-}
-
-                function showAlert(title, desc) {
-                    document.getElementById('alertTitle').textContent = title;
-                document.getElementById('alertDesc').textContent = desc;
-                openModal('alertModal');
+async function importData(e) {
+    showAlert('Notice', 'Import disabled for Cloud version to prevent conflicts. Use the dashboard to add data!');
 }
 
-                // ── Tag Management ─────────────────────────────────────
-                function openManageTagsModal() {
-                    selectTags();
+function showAlert(title, desc) {
+    document.getElementById('alertTitle').textContent = title;
+    document.getElementById('alertDesc').textContent = desc;
+    openModal('alertModal');
 }
 
-                function renderTagsDashboard() {
+// ── Tag Management ─────────────────────────────────────
+function openManageTagsModal() {
+    selectTags();
+}
+
+function renderTagsDashboard() {
     const main = document.getElementById('mainContent');
-                main.innerHTML = `
+    main.innerHTML = `
                 <div class="habit-header">
                     <div class="habit-title-group">
                         <span class="habit-title-icon">🏷️</span>
@@ -1282,16 +1354,16 @@ function confirmDeleteHabit() {
                     </section>
                 </div>
                 `;
-                renderTagManager();
-                renderGroupManager();
+    renderTagManager();
+    renderGroupManager();
 }
 
-                function renderGroupManager() {
+function renderGroupManager() {
     const list = document.getElementById('groupManagerList');
-                if (!list) return;
+    if (!list) return;
     list.innerHTML = habitGroups.map(g => {
         const count = habits.filter(h => h.group_id === g.id).length;
-                return `
+        return `
                 <div style="display:flex; justify-content:space-between; align-items:center; padding:12px; background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:12px;">
                     <div style="display:flex; align-items:center; gap:12px;">
                         <span style="font-size:1.4rem;">${g.icon}</span>
@@ -1304,37 +1376,45 @@ function confirmDeleteHabit() {
                 </div>
                 `;
     }).join('');
-                if (habitGroups.length === 0) list.innerHTML = '<div style="text-align:center; color:var(--dim); padding:2rem;">No groups yet.</div>';
+    if (habitGroups.length === 0) list.innerHTML = '<div style="text-align:center; color:var(--dim); padding:2rem;">No groups yet.</div>';
 }
 
-                async function handleAddGroup() {
+async function handleAddGroup() {
     const nameEl = document.getElementById('newGroupName');
-                const iconEl = document.getElementById('newGroupIcon');
-                const name = nameEl.value.trim();
-                const icon = iconEl.value.trim() || '📁';
-                if (!name) return;
+    const iconEl = document.getElementById('newGroupIcon');
+    const name = nameEl.value.trim();
+    const icon = iconEl.value.trim() || '📁';
+    if (!name) return;
 
-                await sbClient.from('habit_groups').insert({id: 'g_'+Date.now(), name, icon });
-                nameEl.value = ''; iconEl.value = '';
-                await loadData();
-                renderTagsDashboard();
-                renderSidebar();
+    await sbClient.from('habit_groups').insert({ id: 'g_' + Date.now(), name, icon });
+    nameEl.value = ''; iconEl.value = '';
+    await loadData();
+    renderTagsDashboard();
+    renderSidebar();
 }
 
-                async function handleDeleteGroup(id) {
-    if (!confirm('Delete this group? Habits will become ungrouped.')) return;
-                await sbClient.from('habit_groups').delete().eq('id', id);
-                await loadData();
-                renderTagsDashboard();
-                renderSidebar();
+async function handleDeleteGroup(id) {
+    document.getElementById('deleteTitle').textContent = 'Delete Group?';
+    document.getElementById('deleteDesc').textContent = 'Habits in this group will become ungrouped.';
+    const confirmBtn = document.getElementById('confirmDeleteBtn');
+    confirmBtn.style.display = 'block';
+    openModal('deleteModal');
+    confirmBtn.onclick = async () => {
+        await sbClient.from('habit_groups').delete().eq('id', id);
+        await loadData();
+        closeModal('deleteModal');
+        renderTagsDashboard();
+        renderSidebar();
+        showToast('Group deleted');
+    };
 }
 
-                function renderTagManager() {
+function renderTagManager() {
     const list = document.getElementById('tagManagerList');
-                if (!list) return;
+    if (!list) return;
     list.innerHTML = tags.map(t => {
         const usageCount = sessions.filter(s => (s.tag_ids || []).includes(t.id)).length;
-                return `
+        return `
                 <div style="display:flex; justify-content:space-between; align-items:center; padding:12px; background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:12px;">
                     <div style="display:flex; flex-direction:column;">
                         <span style="font-size:0.9rem; font-weight:700; color:var(--text);">${t.name}</span>
@@ -1344,34 +1424,42 @@ function confirmDeleteHabit() {
                 </div>
                 `;
     }).join('');
-                if (tags.length === 0) list.innerHTML = '<div style="text-align:center; color:var(--dim); font-size:0.85rem; padding:2rem;">No tags created yet. Start by adding one above!</div>';
+    if (tags.length === 0) list.innerHTML = '<div style="text-align:center; color:var(--dim); font-size:0.85rem; padding:2rem;">No tags created yet. Start by adding one above!</div>';
 }
 
-                async function handleAddTag() {
+async function handleAddTag() {
     const input = document.getElementById('newTagName');
-                const name = input.value.trim();
-                if (!name) return;
+    const name = input.value.trim();
+    if (!name) return;
 
-                const id = 't_' + Date.now();
-                await sbClient.from('tags').insert({id, name});
-                input.value = '';
-                await loadData();
-                if (activeHabit === 'tags') renderTagsDashboard();
-                renderSidebarTags();
+    const id = 't_' + Date.now();
+    await sbClient.from('tags').insert({ id, name });
+    input.value = '';
+    await loadData();
+    if (activeHabit === 'tags') renderTagsDashboard();
+    renderSidebarTags();
 }
 
-                async function handleDeleteTag(id) {
-    if (!confirm('Delete this tag? It will be removed from all sessions.')) return;
-                await sbClient.from('tags').delete().eq('id', id);
-                await loadData();
-                if (activeHabit === 'tags') renderTagsDashboard();
-                renderSidebarTags();
+async function handleDeleteTag(id) {
+    document.getElementById('deleteTitle').textContent = 'Delete Tag?';
+    document.getElementById('deleteDesc').textContent = 'This tag will be removed from all sessions.';
+    const confirmBtn = document.getElementById('confirmDeleteBtn');
+    confirmBtn.style.display = 'block';
+    openModal('deleteModal');
+    confirmBtn.onclick = async () => {
+        await sbClient.from('tags').delete().eq('id', id);
+        await loadData();
+        closeModal('deleteModal');
+        if (activeHabit === 'tags') renderTagsDashboard();
+        renderSidebarTags();
+        showToast('Tag deleted');
+    };
 }
 
-                // ── Milestone Management ───────────────────────────────
-                function renderEditMilestones(habitId) {
+// ── Milestone Management ───────────────────────────────
+function renderEditMilestones(habitId) {
     const list = document.getElementById('editMilestonesList');
-                if (!list) return;
+    if (!list) return;
     const ms = milestones.filter(m => m.habit_id === habitId);
     list.innerHTML = ms.map(m => `
                 <div style="display:flex; justify-content:space-between; align-items:center; padding:8px; background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:8px;">
@@ -1382,47 +1470,47 @@ function confirmDeleteHabit() {
                     <button type="button" class="action-btn" onclick="handleDeleteMilestone('${m.id}')" style="color:var(--red); border-color:transparent;">✕</button>
                 </div>
                 `).join('');
-                if (ms.length === 0) list.innerHTML = '<div style="text-align:center; color:var(--dim); font-size:0.75rem;">No custom milestones yet.</div>';
+    if (ms.length === 0) list.innerHTML = '<div style="text-align:center; color:var(--dim); font-size:0.75rem;">No custom milestones yet.</div>';
 }
 
-                async function handleAddMilestone() {
+async function handleAddMilestone() {
     const habitId = document.getElementById('editHabitModal').dataset.habitId;
-                const title = document.getElementById('newMilestoneTitle').value.trim();
-                const target = document.getElementById('newMilestoneTarget').value;
+    const title = document.getElementById('newMilestoneTitle').value.trim();
+    const target = document.getElementById('newMilestoneTarget').value;
 
-                if (!title || !target) return;
+    if (!title || !target) return;
 
-                const id = 'm_' + Date.now();
-                await sbClient.from('milestones').insert({
-                    id,
-                    habit_id: habitId,
-                title,
-                target_count: parseInt(target) 
+    const id = 'm_' + Date.now();
+    await sbClient.from('milestones').insert({
+        id,
+        habit_id: habitId,
+        title,
+        target_count: parseInt(target)
     });
 
-                document.getElementById('newMilestoneTitle').value = '';
-                document.getElementById('newMilestoneTarget').value = '';
+    document.getElementById('newMilestoneTitle').value = '';
+    document.getElementById('newMilestoneTarget').value = '';
 
-                await loadData();
-                renderEditMilestones(habitId);
-                renderMain();
+    await loadData();
+    renderEditMilestones(habitId);
+    renderMain();
 }
 
-                async function handleDeleteMilestone(id) {
+async function handleDeleteMilestone(id) {
     const habitId = document.getElementById('editHabitModal').dataset.habitId;
-                await sbClient.from('milestones').delete().eq('id', id);
-                await loadData();
-                renderEditMilestones(habitId);
-                renderMain();
+    await sbClient.from('milestones').delete().eq('id', id);
+    await loadData();
+    renderEditMilestones(habitId);
+    renderMain();
 }
 
-                // ── Reflections Dashboard ──────────────────────────────
-                function renderReflectionsDashboard() {
+// ── Reflections Dashboard ──────────────────────────────
+function renderReflectionsDashboard() {
     const main = document.getElementById('mainContent');
-                const today = fmtDate(new Date());
+    const today = fmtDate(new Date());
     const existing = reflections.find(r => r.date === today);
 
-                main.innerHTML = `
+    main.innerHTML = `
                 <div class="habit-header">
                     <div class="habit-title-group">
                         <span class="habit-title-icon">📔</span>
@@ -1498,14 +1586,14 @@ function confirmDeleteHabit() {
         };
     });
 
-                renderReflectionHistory();
+    renderReflectionHistory();
 }
 
-                function renderReflectionHistory() {
+function renderReflectionHistory() {
     const list = document.getElementById('reflectionHistory');
-                if (!list) return;
-    const sorted = [...reflections].sort((a,b) => b.date.localeCompare(a.date));
-    
+    if (!list) return;
+    const sorted = [...reflections].sort((a, b) => b.date.localeCompare(a.date));
+
     if (reflections.length === 0) {
         list.innerHTML = '<div style="text-align:center; color:var(--dim); padding:2rem;">No history yet.</div>';
         return;
@@ -1556,30 +1644,30 @@ function confirmDeleteHabit() {
     `;
 }
 
-                async function handleReflectionSubmit(e) {
-                    e.preventDefault();
-                const mood = document.querySelector('#moodPicker .icon-opt.selected')?.dataset.val;
-                const energy = document.querySelector('#energyPicker .icon-opt.selected')?.dataset.val;
-                const text = document.getElementById('reflectionNotes').value.trim();
-                const today = fmtDate(new Date());
+async function handleReflectionSubmit(e) {
+    e.preventDefault();
+    const mood = document.querySelector('#moodPicker .icon-opt.selected')?.dataset.val;
+    const energy = document.querySelector('#energyPicker .icon-opt.selected')?.dataset.val;
+    const text = document.getElementById('reflectionNotes').value.trim();
+    const today = fmtDate(new Date());
 
-                if (!mood || !energy) {showAlert("Wait", "Please select both mood and energy level."); return; }
+    if (!mood || !energy) { showAlert("Wait", "Please select both mood and energy level."); return; }
 
-                const submitBtn = e.target.querySelector('button[type="submit"]');
-                submitBtn.disabled = true;
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
 
     const existing = reflections.find(r => r.date === today);
-                if (existing) {
-                    await sbClient.from('reflections').update({ mood, energy, journal_text: text }).eq('date', today);
+    if (existing) {
+        await sbClient.from('reflections').update({ mood, energy, journal_text: text }).eq('date', today);
     } else {
-                    await sbClient.from('reflections').insert({ id: 'r_' + Date.now(), date: today, mood, energy, journal_text: text });
+        await sbClient.from('reflections').insert({ id: 'r_' + Date.now(), date: today, mood, energy, journal_text: text });
     }
 
-                await loadData();
-                renderReflectionsDashboard();
-                renderSidebarTags();
-                submitBtn.disabled = false;
-                fireConfetti();
+    await loadData();
+    renderReflectionsDashboard();
+    renderSidebarTags();
+    submitBtn.disabled = false;
+    fireConfetti();
 }
 
 
