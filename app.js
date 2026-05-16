@@ -845,8 +845,16 @@ function renderTable() {
         return sortDir === 'asc' ? (va > vb ? 1 : -1) : (va < vb ? 1 : -1);
     });
 
+    let html = '';
+    if (selectedHeatmapDate) {
+        html += `<div style="display:flex; align-items:center; gap:10px; margin-bottom:1.5rem; padding:10px 15px; background:var(--accent-glow); border-radius:var(--radius-sm); border:1px solid var(--accent); animation: slideDown 0.3s ease;">
+            <span style="font-size:0.85rem; font-weight:700; color:var(--accent)">📅 Filtering: ${selectedHeatmapDate}</span>
+            <button class="btn btn-ghost" style="padding:4px 10px; font-size:0.75rem; height:auto; color:var(--text)" onclick="selectedHeatmapDate=null; renderMain();">Clear Filter</button>
+        </div>`;
+    }
+
     if (ss.length === 0) {
-        wrap.innerHTML = `<div class="empty-state"><div class="empty-icon">📝</div><h3>No sessions yet</h3><p>Click "Log Session" to start!</p></div>`;
+        wrap.innerHTML = html + `<div class="empty-state"><div class="empty-icon">📝</div><h3>No sessions yet on this day</h3><p>Select another day or clear the filter to see history.</p></div>`;
         return;
     }
 
@@ -854,14 +862,6 @@ function renderTable() {
     const isSearching = q.length > 0;
     const limit = (isSearching || showAllSessions || selectedHeatmapDate) ? 100 : 5;
     const displayList = ss.slice(0, limit);
-
-    let html = '';
-    if (selectedHeatmapDate) {
-        html += `<div style="display:flex; align-items:center; gap:10px; margin-bottom:1rem; padding:8px 12px; background:var(--accent-glow); border-radius:8px; border:1px solid var(--accent);">
-            <span style="font-size:0.8rem; font-weight:700;">📅 Filtering: ${selectedHeatmapDate}</span>
-            <button class="btn btn-ghost" style="padding:2px 8px; font-size:0.7rem; height:auto;" onclick="selectedHeatmapDate=null; renderMain();">Clear Filter</button>
-        </div>`;
-    }
 
     html += `<div class="table-wrapper"><table><thead><tr>
         <th onclick="doSort('date')">Date${sortField === 'date' ? (sortDir === 'desc' ? ' ↓' : ' ↑') : ''}</th>
