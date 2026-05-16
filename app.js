@@ -1108,7 +1108,14 @@ async function handleEditHabit(e) {
         group_id,
         show_time_breakdown: document.getElementById('editHabitTimeBreakdown').checked
     }).eq('id', id);
-    if (error) { showToast('Failed to save: ' + error.message, 'error'); return; }
+    if (error) { 
+        if (error.message.includes('column "priority" does not exist')) {
+            showToast('DATABASE UPDATE REQUIRED: Please run the SQL command I provided to add the "priority" column.', 'error', 8000);
+        } else {
+            showToast('Failed to update: ' + error.message, 'error'); 
+        }
+        return; 
+    }
     await loadData(); closeModal('editHabitModal'); renderSidebar(); renderMain();
     showToast('Habit updated!');
 }
@@ -1869,9 +1876,13 @@ async function handleAddTemplate() {
         tag_ids: [] 
     });
 
-    if (error) {
-        showToast('Failed to create preset', 'error');
-        return;
+    if (error) { 
+        if (error.message.includes('column "priority" does not exist')) {
+            showToast('DATABASE UPDATE REQUIRED: Please run the SQL command I provided to add the "priority" column.', 'error', 8000);
+        } else {
+            showToast('Failed to save habit: ' + error.message, 'error'); 
+        }
+        return; 
     }
 
     document.getElementById('newTemplateName').value = '';
