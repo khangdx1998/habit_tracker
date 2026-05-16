@@ -519,6 +519,15 @@ function renderDashboard() {
 
     if (activeHabitsList.length === 0) { renderWelcome(); return; }
 
+    // Sort by Priority: High (3), Medium (2), Low (1)
+    const priorityMap = { 'high': 3, 'medium': 2, 'low': 1 };
+    const sortedHabits = [...activeHabitsList].sort((a, b) => {
+        const pA = priorityMap[a.priority] || 2;
+        const pB = priorityMap[b.priority] || 2;
+        if (pA !== pB) return pB - pA;
+        return a.name.localeCompare(b.name);
+    });
+
     const quote = dailyQuotes.length > 0 ? dailyQuotes[Math.floor(Math.random() * dailyQuotes.length)] : { text: "Excellence is not an act, but a habit.", author: "Aristotle" };
 
     let totalSessionsAllTime = 0;
@@ -527,13 +536,13 @@ function renderDashboard() {
     const dow = today.getDay(), off = dow === 0 ? 6 : dow - 1;
     const startOfWeek = new Date(today); startOfWeek.setDate(today.getDate() - off); startOfWeek.setHours(0, 0, 0, 0);
 
-    activeHabitsList.forEach(h => {
+    sortedHabits.forEach(h => {
         const ss = sessions.filter(s => s.habitId === h.id && s.status === 'Approved');
         totalSessionsAllTime += ss.length;
         ss.forEach(s => { if (new Date(s.date) >= startOfWeek) totalSessionsThisWeek++; });
     });
 
-    const habitCardsHTML = activeHabitsList.map(h => {
+    const habitCardsHTML = sortedHabits.map(h => {
         const ss = sessions.filter(s => s.habitId === h.id && s.status === 'Approved');
         const stats = computeStats(ss);
         
@@ -541,24 +550,23 @@ function renderDashboard() {
         const totalDaysLogged = new Set(ss.map(s => s.date)).size;
         const progressPct = Math.min((totalDaysLogged / target) * 100, 100);
 
-        // Last Logged Logic
+        // Priority Styling
+        const isHigh = h.priority === 'high';
+        const priorityBorder = isHigh ? 'border: 1.5px solid #fbbf24; box-shadow: 0 0 15px rgba(251, 191, 36, 0.1);' : 'border: 1px solid var(--border);';
+
+        // Last Logged Logic (unchanged but context needed)
         const lastSession = [...ss].sort((a, b) => b.date.localeCompare(a.date) || b.time.localeCompare(a.time))[0];
         let lastText = 'Never';
         if (lastSession) {
             const now = new Date(); now.setHours(0,0,0,0);
             const sessionDate = new Date(lastSession.date); sessionDate.setHours(0,0,0,0);
             const diffDays = Math.round((now - sessionDate) / 86400000);
-            
             const timeLabel = diffDays === 0 ? 'Today' : (diffDays === 1 ? 'Yesterday' : `${diffDays}d ago`);
             const valLabel = lastSession.value != null ? `${lastSession.value} ${h.unit || ''}` : '';
             lastText = valLabel ? `${valLabel} (${timeLabel})` : timeLabel;
         }
 
         // Mini 7-Day Sparkline
-        const today = new Date();
-        const dow = today.getDay(), off = dow === 0 ? 6 : dow - 1;
-        const startOfWeek = new Date(today); startOfWeek.setDate(today.getDate() - off); startOfWeek.setHours(0, 0, 0, 0);
-        
         let sparklineHTML = '';
         for (let i = 0; i < 7; i++) {
             const d = new Date(startOfWeek); d.setDate(d.getDate() + i);
@@ -568,9 +576,11 @@ function renderDashboard() {
         }
 
         return `
-            <div class="stat-card dashboard-habit-card" onclick="selectHabit('${h.id}')" 
-                 style="cursor:pointer; transition:all 0.3s ease; padding:1.25rem; display:flex; flex-direction:column; gap:12px; min-height:140px; position:relative; overflow:hidden; background: var(--bg-sidebar); border: 1px solid var(--border);">
+            <div class="stat-card dashboard-habit-card ${isHigh ? 'priority-high' : ''}" onclick="selectHabit('${h.id}')" 
+                 style="cursor:pointer; transition:all 0.3s ease; padding:1.25rem; display:flex; flex-direction:column; gap:12px; min-height:140px; position:relative; overflow:hidden; background: var(--bg-sidebar); ${priorityBorder}">
                 
+                ${isHigh ? `<div style="position:absolute; top:8px; right:8px; font-size:0.7rem; background:#fbbf24; color:#000; font-weight:900; padding:2px 6px; border-radius:4px; z-index:2; text-transform:uppercase;">Priority</div>` : ''}
+
                 <div style="display:flex; align-items:flex-start; gap:14px; position:relative; z-index:1;">
                     <div style="font-size:1.8rem; background:rgba(255,255,255,0.02); width:48px; height:48px; display:flex; align-items:center; justify-content:center; border-radius:10px; border:1px solid rgba(255,255,255,0.05); flex-shrink:0;">
                         ${h.icon}
@@ -602,7 +612,7 @@ function renderDashboard() {
                     </div>
                 </div>
 
-                <div style="position:absolute; top:0; right:0; width:100px; height:100px; background:${h.color}; opacity:0.02; filter:blur(50px); border-radius:50%;"></div>
+                <div style="position:absolute; top:0; right:0; width:100px; height:100px; background:${isHigh ? '#fbbf24' : h.color}; opacity:${isHigh ? '0.05' : '0.02'}; filter:blur(50px); border-radius:50%;"></div>
             </div>
         `;
     }).join('');
@@ -990,6 +1000,7 @@ function openAddHabitModal() {
     document.getElementById('habitDesc').value = '';
     document.getElementById('habitGoalType').value = 'count';
     document.getElementById('habitGoalTarget').value = '';
+    document.getElementById('habitPriority').value = 'medium';
     document.getElementById('habitTimeBreakdown').checked = false;
     // Reset Pickers
     document.querySelectorAll('#iconPicker .icon-opt').forEach((o, i) => o.classList.toggle('selected', i === 0));
@@ -1011,20 +1022,23 @@ async function handleAddHabit(e) {
     const name = document.getElementById('habitName').value.trim();
     const icon = document.querySelector('#iconPicker .icon-opt.selected')?.dataset.icon || '📌';
     const unit = document.getElementById('habitUnit').value.trim();
-    const description = document.getElementById('habitDesc').value.trim();
+    const desc = document.getElementById('habitDesc').value.trim();
     const color = document.querySelector('#colorPicker .color-opt.selected')?.dataset.color || '#22c55e';
-    const goal_type = document.getElementById('habitGoalType').value;
-    const goal_target = document.getElementById('habitGoalTarget').value;
+    const gType = document.getElementById('habitGoalType').value;
+    const target = document.getElementById('habitGoalTarget').value;
+    const priority = document.getElementById('habitPriority').value;
+    const showTimeBreakdown = document.getElementById('habitTimeBreakdown').checked;
 
     if (!name) return;
     const id = 'h_' + Date.now();
-    const { error } = await sbClient.from('habits').insert({
-        id, name, icon, unit, description, color,
-        goal_type, goal_target: goal_target ? parseFloat(goal_target) : null,
+    const { data, error } = await sbClient.from('habits').insert({
+        id, name, icon, unit, description: desc, color,
+        goal_type: gType, goal_target: target ? parseFloat(target) : null,
         is_archived: false,
         is_deleted: false,
         group_id: document.getElementById('habitGroup').value || null,
-        show_time_breakdown: document.getElementById('habitTimeBreakdown').checked
+        priority: priority,
+        show_time_breakdown: showTimeBreakdown
     });
 
     if (error) {
@@ -1049,6 +1063,7 @@ function openEditHabit(id) {
     document.getElementById('editHabitDesc').value = h.description || '';
     document.getElementById('editHabitGoalType').value = h.goal_type || 'count';
     document.getElementById('editHabitGoalTarget').value = h.goal_target || '';
+    document.getElementById('editHabitPriority').value = h.priority || 'medium';
     document.getElementById('archiveHabitBtn').textContent = h.is_archived ? 'Unarchive' : 'Archive';
     // Set Pickers
     document.querySelectorAll('#editIconPicker .icon-opt').forEach(o => o.classList.toggle('selected', o.dataset.icon === h.icon));
@@ -1083,11 +1098,13 @@ async function handleEditHabit(e) {
     const color = document.querySelector('#editColorPicker .color-opt.selected')?.dataset.color;
     const goal_type = document.getElementById('editHabitGoalType').value;
     const goal_target = document.getElementById('editHabitGoalTarget').value;
+    const priority = document.getElementById('editHabitPriority').value;
     const group_id = document.getElementById('editHabitGroup').value || null;
 
     const { error } = await sbClient.from('habits').update({
         name, icon, unit, description, color,
         goal_type, goal_target: goal_target ? parseFloat(goal_target) : null,
+        priority: priority,
         group_id,
         show_time_breakdown: document.getElementById('editHabitTimeBreakdown').checked
     }).eq('id', id);
