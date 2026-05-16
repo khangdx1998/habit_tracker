@@ -5,7 +5,7 @@ const SB_KEY = 'REMOVED_KEY';
 // The global 'supabase' object comes from the CDN script
 const sbClient = supabase.createClient(SB_URL, SB_KEY);
 
-let habits = [], sessions = [], tags = [], milestones = [], habitGroups = [], reflections = [], dailyQuotes = [];
+let habits = [], sessions = [], tags = [], milestones = [], habitGroups = [], reflections = [], dailyQuotes = [], sessionTemplates = [];
 let moods = [], energies = [];
 let activeHabit = null, currentYear = new Date().getFullYear();
 let sortField = 'date', sortDir = 'desc';
@@ -31,7 +31,7 @@ initTheme();
 const loadData = async () => {
     try {
         // Parallel fetch all tables for faster loading
-        const [hRes, sRes, tRes, mRes, gRes, rRes, qRes, moRes, enRes] = await Promise.all([
+        const [hRes, sRes, tRes, mRes, gRes, rRes, qRes, moRes, enRes, stRes] = await Promise.all([
             sbClient.from('habits').select('*'),
             sbClient.from('sessions').select('*'),
             sbClient.from('tags').select('*'),
@@ -41,6 +41,7 @@ const loadData = async () => {
             sbClient.from('daily_quotes').select('*'),
             sbClient.from('mood').select('*'),
             sbClient.from('energy').select('*'),
+            sbClient.from('session_templates').select('*'),
         ]);
 
         // Log errors but don't crash if tables/columns are missing
@@ -55,6 +56,7 @@ const loadData = async () => {
         habitGroups = gRes.data || [];
         reflections = rRes.data || [];
         dailyQuotes = qRes.data || [];
+        sessionTemplates = stRes.data || [];
         moods = (moRes.data || []).sort((a, b) => a.value - b.value);
         energies = (enRes.data || []).sort((a, b) => a.value - b.value);
 
@@ -972,8 +974,9 @@ function openEditHabit(id) {
     initGroupDropdowns();
     document.getElementById('editHabitGroup').value = h.group_id || '';
     document.getElementById('editHabitTimeBreakdown').checked = !!h.show_time_breakdown;
-
+    
     renderEditMilestones(id);
+    renderEditTemplates(id);
     openModal('editHabitModal');
 }
 
@@ -1069,6 +1072,7 @@ function openLogSession() {
     document.getElementById('logFile').value = '';
     document.getElementById('uploadStatus').textContent = '';
     renderTagSelectors('logTagSelector');
+    renderLogTemplates(activeHabit);
     openModal('logModal');
 }
 
@@ -1671,3 +1675,114 @@ async function handleReflectionSubmit(e) {
 }
 
 
+
+// ── Session Templates / Presets ──────────────────────────
+function renderLogTemplates(habitId) {
+    const container = document.getElementById('logTemplatesContainer');
+    const list = document.getElementById('logTemplatesList');
+    if (!container || !list) return;
+
+    const templates = sessionTemplates.filter(t => t.habit_id === habitId);
+    if (templates.length === 0) {
+        container.style.display = 'none';
+        return;
+    }
+
+    container.style.display = 'block';
+    list.innerHTML = templates.map(t => `
+        <button type="button" class="preset-pill" onclick="applyTemplate('${t.id}')">
+            ⚡ ${t.name}
+        </button>
+    `).join('');
+}
+
+function applyTemplate(id) {
+    const t = sessionTemplates.find(x => x.id === id);
+    if (!t) return;
+
+    if (t.value != null) document.getElementById('logValue').value = t.value;
+    if (t.notes) document.getElementById('logNotes').value = t.notes;
+    
+    // Apply tags if template has any
+    if (t.tag_ids && t.tag_ids.length > 0) {
+        const tagOpts = document.querySelectorAll('#logTagSelector .tag-opt');
+        tagOpts.forEach(opt => {
+            const isSelected = t.tag_ids.includes(opt.dataset.id);
+            opt.classList.toggle('selected', isSelected);
+        });
+    }
+    
+    showToast(`Applied preset: ${t.name}`);
+}
+
+function renderEditTemplates(habitId) {
+    const list = document.getElementById('editTemplatesList');
+    if (!list) return;
+
+    const templates = sessionTemplates.filter(t => t.habit_id === habitId);
+    list.innerHTML = templates.map(t => `
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:10px; background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:12px;">
+            <div style="display:flex; flex-direction:column; gap: 2px;">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                    <span style="font-size:0.85rem; font-weight:700;">⚡ ${t.name}</span>
+                    ${t.value != null ? `<span style="font-size:0.7rem; color:var(--accent); font-weight:600; background:var(--accent)15; padding: 2px 6px; border-radius: 4px;">Val: ${t.value}</span>` : ''}
+                </div>
+                <div style="font-size:0.7rem; color:var(--dim);">${t.notes || 'No default notes'}</div>
+            </div>
+            <button type="button" class="action-btn" onclick="handleDeleteTemplate('${t.id}')" style="color:var(--red); border-color:transparent;">✕</button>
+        </div>
+    `).join('');
+    
+    if (templates.length === 0) {
+        list.innerHTML = '<div style="text-align:center; color:var(--dim); font-size:0.75rem; padding: 10px;">No presets yet. Create one below!</div>';
+    }
+}
+
+async function handleAddTemplate() {
+    const habitId = document.getElementById('editHabitModal').dataset.habitId;
+    const name = document.getElementById('newTemplateName').value.trim();
+    const value = document.getElementById('newTemplateValue').value;
+    const notes = document.getElementById('newTemplateNotes').value.trim();
+    
+    if (!name) {
+        showToast('Please enter a preset name', 'error');
+        return;
+    }
+
+    const id = 'st_' + Date.now();
+    const { error } = await sbClient.from('session_templates').insert({
+        id,
+        habit_id: habitId,
+        name,
+        value: value ? parseFloat(value) : null,
+        notes,
+        tag_ids: [] 
+    });
+
+    if (error) {
+        showToast('Failed to create preset', 'error');
+        return;
+    }
+
+    document.getElementById('newTemplateName').value = '';
+    document.getElementById('newTemplateValue').value = '';
+    document.getElementById('newTemplateNotes').value = '';
+
+    await loadData();
+    renderEditTemplates(habitId);
+    showToast('Preset created!');
+}
+
+async function handleDeleteTemplate(id) {
+    const habitId = document.getElementById('editHabitModal').dataset.habitId;
+    const { error } = await sbClient.from('session_templates').delete().eq('id', id);
+    
+    if (error) {
+        showToast('Failed to delete preset', 'error');
+        return;
+    }
+
+    await loadData();
+    renderEditTemplates(habitId);
+    showToast('Preset removed');
+}
