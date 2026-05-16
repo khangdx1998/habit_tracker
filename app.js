@@ -537,29 +537,39 @@ function renderDashboard() {
         const ss = sessions.filter(s => s.habitId === h.id && s.status === 'Approved');
         const stats = computeStats(ss);
         
-        // Weekly Progress Calculation
-        const target = h.goal_target || 5; // Default to 5 if not set
-        const today = new Date();
-        const dow = today.getDay(), off = dow === 0 ? 6 : dow - 1;
-        const startOfWeek = new Date(today); startOfWeek.setDate(today.getDate() - off); startOfWeek.setHours(0, 0, 0, 0);
-        
-        const sessionsThisWeek = new Set(ss.filter(s => new Date(s.date) >= startOfWeek).map(s => s.date)).size;
-        const progressPct = Math.min((sessionsThisWeek / target) * 100, 100);
+        // Corrected Progress Calculation: Total Unique Days Logged vs Goal Target
+        const target = h.goal_target || 30; // Default to 30 days if not set
+        const totalDaysLogged = new Set(ss.map(s => s.date)).size;
+        const progressPct = Math.min((totalDaysLogged / target) * 100, 100);
 
         return `
-            <div class="stat-card dashboard-habit-card" onclick="selectHabit('${h.id}')" style="cursor:pointer; transition:all 0.2s; padding:1.2rem; display:flex; flex-direction:column; gap:12px; min-height:100px; position:relative; overflow:hidden;">
-                <div style="display:flex; align-items:center; gap:12px; position:relative; z-index:1;">
-                    <span style="font-size:1.6rem; flex-shrink:0;">${h.icon}</span>
-                    <div style="flex:1;">
-                        <div style="font-weight:700; font-size:1rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${h.name}</div>
-                        <div style="font-size:0.7rem; color:var(--dim); font-weight:600;">${sessionsThisWeek} / ${target} days</div>
+            <div class="stat-card dashboard-habit-card" onclick="selectHabit('${h.id}')" 
+                 style="cursor:pointer; transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1); padding:1.25rem; display:flex; flex-direction:column; gap:16px; min-height:120px; position:relative; overflow:hidden; background: var(--bg-sidebar); border: 1px solid var(--border);">
+                
+                <div style="display:flex; align-items:flex-start; gap:14px; position:relative; z-index:1;">
+                    <div style="font-size:2rem; background:rgba(255,255,255,0.03); width:52px; height:52px; display:flex; align-items:center; justify-content:center; border-radius:12px; border:1px solid rgba(255,255,255,0.05); flex-shrink:0;">
+                        ${h.icon}
                     </div>
-                    <div style="font-size:1.1rem; font-weight:800; color:${progressPct >= 100 ? 'var(--green)' : 'var(--text)'}; opacity:0.8;">${Math.round(progressPct)}%</div>
+                    <div style="flex:1; padding-top:4px;">
+                        <div style="font-weight:800; font-size:1.1rem; color:var(--text); margin-bottom:4px; line-height:1.2;">${h.name}</div>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <span style="font-size:0.75rem; color:var(--dim); font-weight:600; background:rgba(255,255,255,0.05); padding:2px 8px; border-radius:20px;">${totalDaysLogged} / ${target} days</span>
+                            ${stats.current > 0 ? `<span style="font-size:0.75rem; color:var(--amber); font-weight:700;">🔥 ${stats.current}d streak</span>` : ''}
+                        </div>
+                    </div>
+                    <div style="text-align:right;">
+                        <div style="font-size:1.4rem; font-weight:900; color:${progressPct >= 100 ? 'var(--green)' : 'var(--text)'}; opacity:0.9;">${Math.round(progressPct)}%</div>
+                    </div>
                 </div>
-                <div class="weekly-progress-bar-bg" style="height:6px; background:rgba(255,255,255,0.05); border-radius:10px; position:relative; z-index:1;">
-                    <div class="weekly-progress-bar-fill" style="height:100%; width:${progressPct}%; background:${h.color}; border-radius:10px; transition:width 0.5s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 0 10px ${h.color}40;"></div>
+
+                <div style="margin-top:auto; position:relative; z-index:1;">
+                    <div class="weekly-progress-bar-bg" style="height:10px; background:rgba(0,0,0,0.3); border-radius:20px; overflow:hidden; position:relative; border:1px solid rgba(255,255,255,0.03);">
+                        <div class="weekly-progress-bar-fill" style="height:100%; width:${progressPct}%; background:linear-gradient(90deg, ${h.color}cc, ${h.color}); border-radius:20px; transition:width 0.8s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 0 15px ${h.color}50;"></div>
+                    </div>
                 </div>
-                <div style="position:absolute; bottom:0; left:0; right:0; height:4px; background:${h.color}; opacity:0.1;"></div>
+
+                <!-- Subtle background glow -->
+                <div style="position:absolute; top:0; right:0; width:80px; height:80px; background:${h.color}; opacity:0.03; filter:blur(40px); border-radius:50%;"></div>
             </div>
         `;
     }).join('');
