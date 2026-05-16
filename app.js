@@ -429,7 +429,7 @@ function renderMain() {
             </div>
         </section>
         ${renderProgressSection(h, ss)}
-        ${renderTimeOfDayBreakdown(ss, h)}
+        ${h.show_time_breakdown ? renderTimeOfDayBreakdown(ss, h) : ''}
         <section class="section-card">
             <div class="section-header">
                 <span class="section-title">🕒 Sessions History</span>
@@ -843,6 +843,7 @@ function openAddHabitModal() {
     document.getElementById('habitDesc').value='';
     document.getElementById('habitGoalType').value='count';
     document.getElementById('habitGoalTarget').value='';
+    document.getElementById('habitTimeBreakdown').checked = false;
     // Reset Pickers
     document.querySelectorAll('#iconPicker .icon-opt').forEach((o,i)=>o.classList.toggle('selected',i===0));
     document.querySelectorAll('#colorPicker .color-opt').forEach((o,i)=>o.classList.toggle('selected',i===0));
@@ -875,7 +876,8 @@ async function handleAddHabit(e) {
         goal_type, goal_target: goal_target ? parseFloat(goal_target) : null,
         is_archived: false,
         is_deleted: false,
-        group_id: document.getElementById('habitGroup').value || null
+        group_id: document.getElementById('habitGroup').value || null,
+        show_time_breakdown: document.getElementById('habitTimeBreakdown').checked
     });
 
     if (error) {
@@ -905,6 +907,7 @@ function openEditHabit(id) {
     
     initGroupDropdowns();
     document.getElementById('editHabitGroup').value = h.group_id || '';
+    document.getElementById('editHabitTimeBreakdown').checked = !!h.show_time_breakdown;
     
     renderEditMilestones(id);
     openModal('editHabitModal');
@@ -925,7 +928,8 @@ async function handleEditHabit(e) {
     await sbClient.from('habits').update({ 
         name, icon, unit, description, color,
         goal_type, goal_target: goal_target ? parseFloat(goal_target) : null,
-        group_id
+        group_id,
+        show_time_breakdown: document.getElementById('editHabitTimeBreakdown').checked
     }).eq('id', id);
     await loadData(); closeModal('editHabitModal'); renderSidebar(); renderMain();
 }
