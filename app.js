@@ -429,6 +429,7 @@ function renderMain() {
             </div>
         </section>
         ${renderProgressSection(h, ss)}
+        ${renderTimeOfDayBreakdown(ss, h)}
         <section class="section-card">
             <div class="section-header">
                 <span class="section-title">🕒 Sessions History</span>
@@ -651,6 +652,73 @@ function getTimeOfDay(createdAt) {
     if (hour >= 5 && hour < 12)  return { symbol: '🌅', label: 'Morning',   cls: 'time-morning'   };
     if (hour >= 12 && hour < 18) return { symbol: '☀️', label: 'Afternoon', cls: 'time-afternoon' };
     return                              { symbol: '🌙', label: 'Night',     cls: 'time-night'     };
+}
+
+function renderTimeOfDayBreakdown(ss, h) {
+    const approved = ss.filter(s => s.status === 'Approved');
+    if (approved.length === 0) return '';
+
+    const buckets = [
+        { key: 'morning',   symbol: '🌅', label: 'Morning',   cls: 'time-morning',   range: '5 AM – 12 PM',  count: 0, totalVal: 0, valCount: 0 },
+        { key: 'afternoon', symbol: '☀️', label: 'Afternoon', cls: 'time-afternoon', range: '12 PM – 6 PM',  count: 0, totalVal: 0, valCount: 0 },
+        { key: 'night',     symbol: '🌙', label: 'Night',     cls: 'time-night',     range: '6 PM – 5 AM',   count: 0, totalVal: 0, valCount: 0 },
+    ];
+
+    approved.forEach(s => {
+        const tod = getTimeOfDay(s.created_at);
+        const bucket = buckets.find(b => b.cls === tod.cls);
+        if (bucket) {
+            bucket.count++;
+            if (s.value != null && s.value !== '') {
+                bucket.totalVal += parseFloat(s.value) || 0;
+                bucket.valCount++;
+            }
+        }
+    });
+
+    const total = approved.length;
+    const maxCount = Math.max(...buckets.map(b => b.count), 1);
+
+    const rows = buckets.map(b => {
+        const pct = total > 0 ? Math.round((b.count / total) * 100) : 0;
+        const avg = b.valCount > 0 ? (b.totalVal / b.valCount).toFixed(1) : '—';
+        const barWidth = Math.round((b.count / maxCount) * 100);
+        return `<tr>
+            <td>
+                <span class="time-of-day-badge ${b.cls}" style="min-width:110px; justify-content:center;">
+                    ${b.symbol}<span class="tod-label">${b.label}</span>
+                </span>
+            </td>
+            <td style="color:var(--dim); font-size:0.72rem;">${b.range}</td>
+            <td style="font-weight:700; font-variant-numeric:tabular-nums;">${b.count}</td>
+            <td style="width:35%;">
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <div style="flex:1; height:8px; background:rgba(255,255,255,0.06); border-radius:4px; overflow:hidden;">
+                        <div style="height:100%; width:${barWidth}%; background:${h.color}; border-radius:4px; transition:width 0.6s ease; box-shadow:0 0 8px ${h.color}40;"></div>
+                    </div>
+                    <span style="font-size:0.72rem; color:var(--dim); font-weight:600; min-width:32px; text-align:right;">${pct}%</span>
+                </div>
+            </td>
+            <td style="font-weight:700; color:${h.color}; font-variant-numeric:tabular-nums;">${avg}${avg !== '—' && h.unit ? ' <span style="font-size:0.7rem; color:var(--dim); font-weight:500;">' + h.unit + '</span>' : ''}</td>
+        </tr>`;
+    }).join('');
+
+    return `
+    <section class="section-card">
+        <span class="section-title">⏰ Time of Day Breakdown</span>
+        <div class="table-wrapper" style="margin-top:1rem;">
+            <table>
+                <thead><tr>
+                    <th>Period</th>
+                    <th>Hours</th>
+                    <th>Sessions</th>
+                    <th>Distribution</th>
+                    <th>Avg Value</th>
+                </tr></thead>
+                <tbody>${rows}</tbody>
+            </table>
+        </div>
+    </section>`;
 }
 
 // ── Activity Table ─────────────────────────────────────
