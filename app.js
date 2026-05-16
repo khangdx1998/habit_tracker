@@ -557,9 +557,6 @@ function renderDashboard() {
                             ${stats.current > 0 ? `<span style="font-size:0.75rem; color:var(--amber); font-weight:700;">🔥 ${stats.current}d streak</span>` : ''}
                         </div>
                     </div>
-                    <div style="text-align:right;">
-                        <div style="font-size:1.4rem; font-weight:900; color:${progressPct >= 100 ? 'var(--green)' : 'var(--text)'}; opacity:0.9;">${Math.round(progressPct)}%</div>
-                    </div>
                 </div>
 
                 <div style="margin-top:auto; position:relative; z-index:1;">
