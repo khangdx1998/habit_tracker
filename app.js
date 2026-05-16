@@ -975,6 +975,15 @@ function openEditHabit(id) {
     document.getElementById('editHabitGroup').value = h.group_id || '';
     document.getElementById('editHabitTimeBreakdown').checked = !!h.show_time_breakdown;
     
+    // Clear preset inputs
+    document.getElementById('newTemplateName').value = '';
+    document.getElementById('newTemplateValue').value = '';
+    document.getElementById('newTemplateNotes').value = '';
+
+    // Clear milestone inputs
+    document.getElementById('newMilestoneTitle').value = '';
+    document.getElementById('newMilestoneTarget').value = '';
+
     renderEditMilestones(id);
     renderEditTemplates(id);
     openModal('editHabitModal');
