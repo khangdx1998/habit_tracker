@@ -12,6 +12,7 @@ let sortField = 'date', sortDir = 'desc';
 let showAllSessions = false;
 let collapsedGroups = new Set(); // Track which groups are collapsed
 let selectedHeatmapDate = null; // Filter for heatmap click
+let privateHabitsUnlocked = false; // Whether private habits are currently visible
 
 function setTheme(theme) {
     if (theme === 'default') {
@@ -230,8 +231,18 @@ function renderSidebar() {
     if (refNav) refNav.classList.toggle('active', activeHabit === 'reflections');
 
     let html = '';
-    const activeHabitsList = habits.filter(h => !h.is_deleted && !h.is_archived);
-    const archivedHabitsList = habits.filter(h => !h.is_deleted && h.is_archived);
+    const activeHabitsList = habits.filter(h => !h.is_deleted && !h.is_archived && (!h.is_private || privateHabitsUnlocked));
+    const archivedHabitsList = habits.filter(h => !h.is_deleted && h.is_archived && (!h.is_private || privateHabitsUnlocked));
+
+    // Update lock/unlock button appearance
+    const lockBtn = document.getElementById('privateToggleBtn');
+    if (lockBtn) {
+        const hasPrivate = habits.some(h => !h.is_deleted && h.is_private);
+        lockBtn.style.display = hasPrivate ? 'block' : 'none';
+        lockBtn.textContent = privateHabitsUnlocked ? '🔓' : '🔒';
+        lockBtn.title = privateHabitsUnlocked ? 'Lock private habits' : 'Unlock private habits';
+        lockBtn.style.background = privateHabitsUnlocked ? 'rgba(239, 68, 68, 0.15)' : 'transparent';
+    }
 
     // Grouping logic - Robust check for missing group_id or un-run SQL
     const groups = habitGroups || [];
@@ -275,7 +286,7 @@ function renderHabitItems(list, isArchived = false) {
         return `<div class="habit-nav-item ${activeHabit === h.id ? 'active' : ''}" onclick="selectHabit('${h.id}')" style="${isArchived ? 'opacity: 0.6' : ''}">
             <span class="habit-nav-icon" style="${isArchived ? 'filter: grayscale(1)' : ''}">${h.icon}</span>
             <div class="habit-nav-info">
-                <span class="habit-nav-name">${h.name}</span>
+                <span class="habit-nav-name">${h.name}${h.is_private ? ' <span style="font-size:0.6rem; opacity:0.5;" title="Private">🔒</span>' : ''}</span>
                 <span class="habit-nav-count">${count} sessions</span>
             </div>
             <div class="habit-nav-actions">
@@ -515,7 +526,7 @@ function renderMain() {
 
 function renderDashboard() {
     const main = document.getElementById('mainContent');
-    const activeHabitsList = habits.filter(h => h && h.is_archived !== true);
+    const activeHabitsList = habits.filter(h => h && h.is_archived !== true && (!h.is_private || privateHabitsUnlocked));
 
     if (activeHabitsList.length === 0) { renderWelcome(); return; }
 
@@ -1030,6 +1041,7 @@ function openAddHabitModal() {
     document.getElementById('habitGoalTarget').value = '';
     document.getElementById('habitPriority').value = 'medium';
     document.getElementById('habitTimeBreakdown').checked = false;
+    document.getElementById('habitPrivate').checked = false;
     // Reset Pickers
     document.querySelectorAll('#iconPicker .icon-opt').forEach((o, i) => o.classList.toggle('selected', i === 0));
     document.querySelectorAll('#colorPicker .color-opt').forEach((o, i) => o.classList.toggle('selected', i === 0));
@@ -1056,6 +1068,7 @@ async function handleAddHabit(e) {
     const target = document.getElementById('habitGoalTarget').value;
     const priority = document.getElementById('habitPriority').value;
     const showTimeBreakdown = document.getElementById('habitTimeBreakdown').checked;
+    const isPrivate = document.getElementById('habitPrivate').checked;
 
     if (!name) return;
     const id = 'h_' + Date.now();
@@ -1066,7 +1079,8 @@ async function handleAddHabit(e) {
         is_deleted: false,
         group_id: document.getElementById('habitGroup').value || null,
         priority: priority,
-        show_time_breakdown: showTimeBreakdown
+        show_time_breakdown: showTimeBreakdown,
+        is_private: isPrivate
     });
 
     if (error) {
@@ -1092,6 +1106,7 @@ function openEditHabit(id) {
     document.getElementById('editHabitGoalType').value = h.goal_type || 'count';
     document.getElementById('editHabitGoalTarget').value = h.goal_target || '';
     document.getElementById('editHabitPriority').value = h.priority || 'medium';
+    document.getElementById('editHabitPrivate').checked = !!h.is_private;
     document.getElementById('archiveHabitBtn').textContent = h.is_archived ? 'Unarchive' : 'Archive';
     // Set Pickers
     document.querySelectorAll('#editIconPicker .icon-opt').forEach(o => o.classList.toggle('selected', o.dataset.icon === h.icon));
@@ -1134,7 +1149,8 @@ async function handleEditHabit(e) {
         goal_type, goal_target: goal_target ? parseFloat(goal_target) : null,
         priority: priority,
         group_id,
-        show_time_breakdown: document.getElementById('editHabitTimeBreakdown').checked
+        show_time_breakdown: document.getElementById('editHabitTimeBreakdown').checked,
+        is_private: document.getElementById('editHabitPrivate').checked
     }).eq('id', id);
     if (error) { 
         if (error.message.includes('column "priority" does not exist')) {
@@ -1935,3 +1951,102 @@ async function handleDeleteTemplate(id) {
     renderEditTemplates(habitId);
     showToast('Preset removed');
 }
+
+// ── Private Habits — Password Protection ─────────────────
+async function hashPassword(password) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(password + '_trackpro_salt_2026');
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+function hasPrivatePassword() {
+    return !!localStorage.getItem('tp_private_hash');
+}
+
+function togglePrivateHabits() {
+    if (privateHabitsUnlocked) {
+        // Lock them back
+        privateHabitsUnlocked = false;
+        renderSidebar();
+        renderMain();
+        showToast('🔒 Private habits locked');
+        return;
+    }
+
+    // Need to unlock — show password modal
+    const isFirstTime = !hasPrivatePassword();
+    const titleEl = document.getElementById('privatePasswordTitle');
+    const descEl = document.getElementById('privatePasswordDesc');
+    const confirmGroup = document.getElementById('privatePasswordConfirmGroup');
+    const submitBtn = document.getElementById('privatePasswordSubmitBtn');
+    const inputEl = document.getElementById('privatePasswordInput');
+    const confirmEl = document.getElementById('privatePasswordConfirm');
+
+    inputEl.value = '';
+    confirmEl.value = '';
+
+    if (isFirstTime) {
+        titleEl.textContent = '🔐 Set Private Password';
+        descEl.textContent = 'Create a password to protect your private habits. You\'ll need this to view them.';
+        confirmGroup.style.display = 'block';
+        submitBtn.textContent = 'Set Password';
+    } else {
+        titleEl.textContent = '🔐 Enter Password';
+        descEl.textContent = 'Enter your password to view private habits.';
+        confirmGroup.style.display = 'none';
+        submitBtn.textContent = 'Unlock';
+    }
+
+    openModal('privatePasswordModal');
+    setTimeout(() => inputEl.focus(), 100);
+}
+
+async function handlePrivatePassword(e) {
+    e.preventDefault();
+    const password = document.getElementById('privatePasswordInput').value;
+    const isFirstTime = !hasPrivatePassword();
+
+    if (isFirstTime) {
+        const confirm = document.getElementById('privatePasswordConfirm').value;
+        if (password !== confirm) {
+            showToast('Passwords do not match', 'error');
+            return;
+        }
+        if (password.length < 4) {
+            showToast('Password must be at least 4 characters', 'error');
+            return;
+        }
+        const hash = await hashPassword(password);
+        localStorage.setItem('tp_private_hash', hash);
+        privateHabitsUnlocked = true;
+        closeModal('privatePasswordModal');
+        renderSidebar();
+        renderMain();
+        showToast('🔓 Password set & private habits unlocked!');
+    } else {
+        const hash = await hashPassword(password);
+        const stored = localStorage.getItem('tp_private_hash');
+        if (hash === stored) {
+            privateHabitsUnlocked = true;
+            closeModal('privatePasswordModal');
+            renderSidebar();
+            renderMain();
+            showToast('🔓 Private habits unlocked!');
+        } else {
+            showToast('❌ Wrong password', 'error');
+        }
+    }
+}
+
+// Also block navigating directly to a private habit
+const _originalSelectHabit = selectHabit;
+selectHabit = function(id) {
+    const h = habits.find(x => x.id === id);
+    if (h && h.is_private && !privateHabitsUnlocked) {
+        showToast('🔒 This habit is private. Unlock first.', 'error');
+        return;
+    }
+    _originalSelectHabit(id);
+};
