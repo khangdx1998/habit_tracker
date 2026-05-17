@@ -199,9 +199,154 @@ function initPickers() {
 }
 
 // ── Init ───────────────────────────────────────────────
+let loginPasswordHash = null; // The app login password hash from Supabase
+
 document.addEventListener('DOMContentLoaded', async () => {
-    showLoading();
     initPickers();
+    // Check if already authenticated this session
+    if (sessionStorage.getItem('tp_authenticated') === 'true') {
+        await bootApp();
+        return;
+    }
+    // Load the login password hash from Supabase to determine first-time vs returning
+    await loadLoginPasswordHash();
+    setupLoginScreen();
+});
+
+async function loadLoginPasswordHash() {
+    try {
+        const { data, error } = await sbClient
+            .from('app_settings')
+            .select('value')
+            .eq('key', 'login_password_hash')
+            .maybeSingle();
+        if (!error && data) {
+            loginPasswordHash = data.value;
+        }
+    } catch (e) {
+        console.warn('Could not load login password:', e);
+    }
+}
+
+async function saveLoginPasswordHash(hash) {
+    loginPasswordHash = hash;
+    try {
+        const { data: existing } = await sbClient
+            .from('app_settings')
+            .select('key')
+            .eq('key', 'login_password_hash')
+            .maybeSingle();
+        if (existing) {
+            await sbClient.from('app_settings')
+                .update({ value: hash })
+                .eq('key', 'login_password_hash');
+        } else {
+            await sbClient.from('app_settings')
+                .insert({ key: 'login_password_hash', value: hash });
+        }
+    } catch (e) {
+        console.error('Failed to save login password:', e);
+    }
+}
+
+function setupLoginScreen() {
+    const isFirstTime = !loginPasswordHash;
+    const heading = document.getElementById('loginHeading');
+    const subheading = document.getElementById('loginSubheading');
+    const confirmGroup = document.getElementById('loginConfirmGroup');
+    const btnText = document.getElementById('loginBtnText');
+
+    if (isFirstTime) {
+        heading.textContent = 'Create Password';
+        subheading.textContent = 'Set a password to protect your dashboard';
+        confirmGroup.style.display = 'block';
+        btnText.textContent = 'Set Password & Enter';
+    } else {
+        heading.textContent = 'Welcome Back';
+        subheading.textContent = 'Enter your password to continue';
+        confirmGroup.style.display = 'none';
+        btnText.textContent = 'Unlock';
+    }
+
+    setTimeout(() => document.getElementById('loginPassword').focus(), 200);
+}
+
+function toggleLoginPwVisibility() {
+    const input = document.getElementById('loginPassword');
+    const isPassword = input.type === 'password';
+    input.type = isPassword ? 'text' : 'password';
+}
+
+function showLoginError(msg) {
+    const el = document.getElementById('loginError');
+    el.textContent = msg;
+    el.style.display = 'block';
+}
+
+function hideLoginError() {
+    document.getElementById('loginError').style.display = 'none';
+}
+
+async function handleLogin(e) {
+    e.preventDefault();
+    hideLoginError();
+
+    const password = document.getElementById('loginPassword').value;
+    const isFirstTime = !loginPasswordHash;
+    const btnText = document.getElementById('loginBtnText');
+    const spinner = document.getElementById('loginSpinner');
+
+    // Show loading state
+    btnText.style.display = 'none';
+    spinner.style.display = 'block';
+
+    try {
+        if (isFirstTime) {
+            const confirm = document.getElementById('loginPasswordConfirm').value;
+            if (password.length < 4) {
+                showLoginError('Password must be at least 4 characters');
+                return;
+            }
+            if (password !== confirm) {
+                showLoginError('Passwords do not match');
+                return;
+            }
+            const hash = await hashPassword(password);
+            await saveLoginPasswordHash(hash);
+        } else {
+            const hash = await hashPassword(password);
+            if (hash !== loginPasswordHash) {
+                showLoginError('Incorrect password');
+                return;
+            }
+        }
+
+        // Success — mark session as authenticated
+        sessionStorage.setItem('tp_authenticated', 'true');
+
+        // Animate out login screen
+        const loginScreen = document.getElementById('loginScreen');
+        loginScreen.classList.add('hiding');
+
+        setTimeout(async () => {
+            loginScreen.style.display = 'none';
+            await bootApp();
+        }, 450);
+
+    } finally {
+        btnText.style.display = 'inline';
+        spinner.style.display = 'none';
+    }
+}
+
+async function bootApp() {
+    // Hide login screen if still visible (session restore case)
+    const loginScreen = document.getElementById('loginScreen');
+    if (loginScreen) loginScreen.style.display = 'none';
+
+    // Show the app
+    document.getElementById('appLayout').style.display = 'flex';
+    showLoading();
     await loadData();
     await loadPrivatePasswordHash();
     hideLoading();
@@ -214,7 +359,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     } else {
         renderWelcome();
     }
-});
+}
+
 
 // ── Sidebar ────────────────────────────────────────────
 function renderSidebar() {
