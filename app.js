@@ -2048,7 +2048,7 @@ function renderReflectionsDashboard() {
 function renderReflectionHistory() {
     const list = document.getElementById('reflectionHistory');
     if (!list) return;
-    const sorted = [...reflections].sort((a, b) => b.date.localeCompare(a.date));
+    const sorted = [...reflections].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 10);
 
     if (reflections.length === 0) {
         list.innerHTML = '<div style="text-align:center; color:var(--dim); padding:2rem;">No history yet.</div>';
@@ -2067,13 +2067,19 @@ function renderReflectionHistory() {
                     </tr>
                 </thead>
                 <tbody>
-                    ${sorted.map(r => {
+                    ${sorted.map((r, idx) => {
         const moodObj = moods.find(m => m.value == r.mood);
         const energyObj = energies.find(e => e.value == r.energy);
         const mLabel = moodObj ? moodObj.label : '—';
         const mIcon = moodObj ? moodObj.icon : '';
         const eLabel = energyObj ? energyObj.label : '—';
         const eIcon = energyObj ? energyObj.icon : '';
+        
+        const isRecent = idx < 2; // only show the 2 most recent notes completely clear
+        const displayNote = isRecent 
+            ? (r.journal_text || '—') 
+            : `<span style="filter: blur(3.5px); opacity: 0.3; user-select: none; pointer-events: none; letter-spacing: 2px;">${r.journal_text ? '••••••••••••••••••••' : '—'}</span><span style="font-size:0.65rem; opacity:0.35; margin-left:6px;" title="Locked for privacy">🔒</span>`;
+            
         return `
                         <tr>
                             <td style="font-weight:600; white-space:nowrap">${r.date}</td>
@@ -2089,8 +2095,8 @@ function renderReflectionHistory() {
                                     <span style="font-size:0.75rem; font-weight:600">${eLabel}</span>
                                 </div>
                             </td>
-                            <td style="color:var(--dim); font-size:0.78rem; line-height:1.4; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap" title="${r.journal_text || ''}">
-                                ${r.journal_text || '—'}
+                            <td style="color:var(--dim); font-size:0.78rem; line-height:1.4; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap" ${isRecent ? `title="${r.journal_text || ''}"` : ''}>
+                                ${displayNote}
                             </td>
                         </tr>`;
     }).join('')}
