@@ -511,7 +511,10 @@ function renderSidebar() {
     if (tagsNav) tagsNav.classList.toggle('active', activeHabit === 'tags');
 
     const refNav = document.getElementById('navReflections');
-    if (refNav) refNav.classList.toggle('active', activeHabit === 'reflections');
+    if (refNav) {
+        refNav.classList.toggle('active', activeHabit === 'reflections');
+        refNav.style.display = privateHabitsUnlocked ? 'flex' : 'none';
+    }
 
     let html = '';
     const activeHabitsList = habits.filter(h => !h.is_deleted && !h.is_archived && (!h.is_private || privateHabitsUnlocked));
@@ -585,13 +588,7 @@ function renderSidebarTags() {
     if (el) el.textContent = `${tags.length} tags`;
 
     const rel = document.getElementById('totalReflectionsLabel');
-    if (rel) {
-        if (privateHabitsUnlocked) {
-            rel.textContent = `${reflections.length} logs`;
-        } else {
-            rel.textContent = '🔒 Locked';
-        }
-    }
+    if (rel) rel.textContent = `${reflections.length} logs`;
 }
 
 async function quickLog(habitId) {
