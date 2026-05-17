@@ -1977,6 +1977,11 @@ function renderReflectionsDashboard() {
                     </div>
                 </div>
 
+                <div class="section-card" style="margin-bottom:1.5rem; padding: 1.5rem 1.8rem;">
+                    <span class="section-title" style="font-size: 0.85rem; letter-spacing: 1.5px;">MINDSET & ENERGY TREND (LAST 10 DAYS)</span>
+                    <div id="mindsetTrendChart" style="margin-top:1.5rem; height:160px; position:relative; width:100%;"></div>
+                </div>
+
                 <div class="two-col">
                     <section class="section-card">
                         <span class="section-title">${existing ? 'Update Today\'s Reflection' : 'Log Today\'s Reflection'}</span>
@@ -2042,6 +2047,7 @@ function renderReflectionsDashboard() {
         };
     });
 
+    renderMindsetChart();
     renderReflectionHistory();
 }
 
@@ -2078,7 +2084,7 @@ function renderReflectionHistory() {
         const isRecent = idx < 2; // only show the 2 most recent notes completely clear
         const displayNote = isRecent 
             ? (r.journal_text || '—') 
-            : `<span style="filter: blur(3.5px); opacity: 0.3; user-select: none; pointer-events: none; letter-spacing: 2px;">${r.journal_text ? '••••••••••••••••••••' : '—'}</span><span style="font-size:0.65rem; opacity:0.35; margin-left:6px;" title="Locked for privacy">🔒</span>`;
+            : `<span class="revealable-note" onclick="decryptNote(this, \`${r.journal_text ? r.journal_text.replace(/`/g, '\\`').replace(/\$/g, '\\$') : ''}\`)" style="filter: blur(3.5px); opacity: 0.3; user-select: none; pointer-events: auto; cursor: pointer; transition: all 0.3s ease; display: inline-block; letter-spacing: 2px;" title="Click to decrypt entry">${r.journal_text ? '••••••••••••••••••••' : '—'}</span><span style="font-size:0.65rem; opacity:0.35; margin-left:6px; transition: opacity 0.3s ease;">🔒</span>`;
             
         return `
                         <tr>
@@ -2102,6 +2108,199 @@ function renderReflectionHistory() {
     }).join('')}
                 </tbody>
             </table>
+        </div>
+    `;
+
+    renderMindsetChart();
+}
+
+function decryptNote(element, originalText) {
+    if (!originalText || element.dataset.decrypted === 'true') return;
+    element.dataset.decrypted = 'true';
+
+    // Play subtle unlock audio tick (Web Audio API)
+    try {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (AudioContext) {
+            const ctx = new AudioContext();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(600, ctx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.1);
+            gain.gain.setValueAtTime(0.04, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.1);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start();
+            osc.stop(ctx.currentTime + 0.1);
+        }
+    } catch (e) {}
+
+    // Animate matrix text reveal
+    const targetLength = originalText.length;
+    let iteration = 0;
+    const interval = setInterval(() => {
+        element.innerHTML = originalText
+            .split("")
+            .map((char, index) => {
+                if (index < iteration) {
+                    return originalText[index];
+                }
+                const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()";
+                return chars[Math.floor(Math.random() * chars.length)];
+            })
+            .join("");
+
+        if (iteration >= targetLength) {
+            clearInterval(interval);
+            element.innerHTML = originalText;
+            element.style.filter = 'none';
+            element.style.opacity = '1';
+            element.style.userSelect = 'auto';
+            element.style.pointerEvents = 'auto';
+            element.style.cursor = 'default';
+            
+            // Remove lock icon sibling if present
+            const lockIcon = element.nextElementSibling;
+            if (lockIcon && lockIcon.textContent.includes('🔒')) {
+                lockIcon.style.opacity = '0';
+                setTimeout(() => lockIcon.remove(), 300);
+            }
+        }
+        iteration += Math.ceil(targetLength / 10);
+    }, 30);
+}
+
+function renderMindsetChart() {
+    const container = document.getElementById('mindsetTrendChart');
+    if (!container) return;
+
+    // Use chronological order for time-series trend (oldest to newest)
+    const data = [...reflections]
+        .sort((a, b) => a.date.localeCompare(b.date))
+        .slice(-10); // last 10 records chronologically
+
+    if (data.length < 2) {
+        container.innerHTML = `<div style="display:flex; align-items:center; justify-content:center; height:100%; color:var(--dim); font-size:0.8rem; border: 1px dashed rgba(255,255,255,0.06); border-radius:8px;">Add at least 2 reflections to view trends</div>`;
+        return;
+    }
+
+    const width = container.clientWidth || 500;
+    const height = 150;
+    const paddingLeft = 40;
+    const paddingRight = 20;
+    const paddingTop = 20;
+    const paddingBottom = 30;
+
+    const chartW = width - paddingLeft - paddingRight;
+    const chartH = height - paddingTop - paddingBottom;
+
+    // Scale values: moods and energies are usually 1 to 5
+    const minVal = 1;
+    const maxVal = 5;
+    const valRange = maxVal - minVal;
+
+    const getX = (idx) => paddingLeft + (idx / (data.length - 1)) * chartW;
+    const getY = (val) => {
+        const v = parseFloat(val) || 3;
+        const normalized = (v - minVal) / valRange; // 0 to 1
+        return height - paddingBottom - normalized * chartH;
+    };
+
+    // Construct path points
+    let moodPoints = [];
+    let energyPoints = [];
+
+    data.forEach((r, idx) => {
+        moodPoints.push(`${getX(idx)},${getY(r.mood)}`);
+        energyPoints.push(`${getX(idx)},${getY(r.energy)}`);
+    });
+
+    const moodPath = `M ${moodPoints.join(' L ')}`;
+    const energyPath = `M ${energyPoints.join(' L ')}`;
+
+    // Draw standard horizontal grid lines (values 1 to 5)
+    let gridLinesHtml = '';
+    for (let i = 1; i <= 5; i++) {
+        const y = getY(i);
+        let label = '';
+        if (i === 1) label = 'Low';
+        if (i === 3) label = 'Avg';
+        if (i === 5) label = 'Peak';
+        
+        gridLinesHtml += `
+            <line x1="${paddingLeft}" y1="${y}" x2="${width - paddingRight}" y2="${y}" stroke="rgba(255,255,255,0.05)" stroke-dasharray="3,3" />
+            ${label ? `<text x="${paddingLeft - 10}" y="${y + 4}" fill="var(--dim)" font-size="9" text-anchor="end" font-weight="600">${label}</text>` : ''}
+        `;
+    }
+
+    // X-axis date labels
+    let dateLabelsHtml = '';
+    const step = Math.max(1, Math.floor(data.length / 4));
+    data.forEach((r, idx) => {
+        if (idx % step === 0 || idx === data.length - 1) {
+            const x = getX(idx);
+            const shortDate = r.date.substring(5); // MM-DD
+            dateLabelsHtml += `
+                <text x="${x}" y="${height - 10}" fill="var(--dim)" font-size="9" text-anchor="middle">${shortDate}</text>
+            `;
+        }
+    });
+
+    // Draw glowing data dots
+    let dotsHtml = '';
+    data.forEach((r, idx) => {
+        const mx = getX(idx);
+        const my = getY(r.mood);
+        const ex = getX(idx);
+        const ey = getY(r.energy);
+
+        dotsHtml += `
+            <circle cx="${mx}" cy="${my}" r="4" fill="#a855f7" stroke="var(--bg-card)" stroke-width="1.5" />
+            <circle cx="${ex}" cy="${ey}" r="4" fill="#10b981" stroke="var(--bg-card)" stroke-width="1.5" />
+        `;
+    });
+
+    container.innerHTML = `
+        <svg width="100%" height="${height}" style="overflow:visible;">
+            <defs>
+                <linearGradient id="moodGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stop-color="#a855f7" stop-opacity="0.25" />
+                    <stop offset="100%" stop-color="#a855f7" stop-opacity="0.0" />
+                </linearGradient>
+                <linearGradient id="energyGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stop-color="#10b981" stop-opacity="0.15" />
+                    <stop offset="100%" stop-color="#10b981" stop-opacity="0.0" />
+                </linearGradient>
+            </defs>
+            
+            <!-- Grid Lines -->
+            ${gridLinesHtml}
+
+            <!-- Area fills for depth -->
+            <path d="${moodPath} L ${getX(data.length - 1)},${height - paddingBottom} L ${getX(0)},${height - paddingBottom} Z" fill="url(#moodGrad)" />
+            <path d="${energyPath} L ${getX(data.length - 1)},${height - paddingBottom} L ${getX(0)},${height - paddingBottom} Z" fill="url(#energyGrad)" />
+
+            <!-- Stroke Trend lines -->
+            <path d="${moodPath}" fill="none" stroke="#a855f7" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0 0 6px rgba(168,85,247,0.4));" />
+            <path d="${energyPath}" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0 0 6px rgba(16,185,129,0.3));" />
+
+            <!-- Dots -->
+            ${dotsHtml}
+
+            <!-- Axis Labels -->
+            ${dateLabelsHtml}
+        </svg>
+        <div style="display:flex; justify-content:center; gap:20px; font-size:0.75rem; font-weight:600; margin-top:2px;">
+            <div style="display:flex; align-items:center; gap:6px;">
+                <span style="display:inline-block; width:10px; height:10px; background:#a855f7; border-radius:50%;"></span>
+                <span style="color:var(--text);">Mood</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:6px;">
+                <span style="display:inline-block; width:10px; height:10px; background:#10b981; border-radius:50%;"></span>
+                <span style="color:var(--text);">Energy</span>
+            </div>
         </div>
     `;
 }
