@@ -1150,7 +1150,7 @@ function renderTimeOfDayBreakdown(ss, h) {
     const rows = buckets.map(b => {
         const pct = total > 0 ? Math.round((b.count / total) * 100) : 0;
         const avg = b.valCount > 0 ? (b.totalVal / b.valCount).toFixed(1) : '—';
-        const barWidth = Math.round((b.count / maxCount) * 100);
+        const barWidth = pct;
         return `<tr>
             <td>
                 <span class="time-of-day-badge ${b.cls}" style="min-width:110px; justify-content:center;">
