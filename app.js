@@ -585,7 +585,13 @@ function renderSidebarTags() {
     if (el) el.textContent = `${tags.length} tags`;
 
     const rel = document.getElementById('totalReflectionsLabel');
-    if (rel) rel.textContent = `${reflections.length} logs`;
+    if (rel) {
+        if (privateHabitsUnlocked) {
+            rel.textContent = `${reflections.length} logs`;
+        } else {
+            rel.textContent = '🔒 Locked';
+        }
+    }
 }
 
 async function quickLog(habitId) {
@@ -657,6 +663,11 @@ function selectTags() {
 }
 
 function selectReflections() {
+    if (!privateHabitsUnlocked) {
+        showToast('🔒 Reflections are private. Unlock first.', 'error');
+        togglePrivateHabits();
+        return;
+    }
     activeHabit = 'reflections';
     renderSidebar();
     renderMain();
@@ -2291,9 +2302,20 @@ function togglePrivateHabits() {
     if (privateHabitsUnlocked) {
         // Lock them back
         privateHabitsUnlocked = false;
+        
+        // Secure Redirect: Boot user out of private views immediately
+        if (activeHabit === 'reflections') {
+            activeHabit = 'dashboard';
+        } else {
+            const h = habits.find(x => x.id === activeHabit);
+            if (h && h.is_private) {
+                activeHabit = 'dashboard';
+            }
+        }
+        
         renderSidebar();
         renderMain();
-        showToast('🔒 Private habits locked');
+        showToast('🔒 Private views locked');
         return;
     }
 
