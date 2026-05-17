@@ -117,35 +117,134 @@ function hideLoading() {
     if (el) el.classList.add('hidden');
 }
 
-// ── Confetti Effect ──────────────────────────────────────
-function fireConfetti() {
-    const count = 40;
-    const container = document.body;
-    for (let i = 0; i < count; i++) {
-        const confetti = document.createElement('div');
-        const colors = ['#6366f1', '#a855f7', '#22c55e', '#f59e0b', '#ec4899', '#06b6d4'];
-        Object.assign(confetti.style, {
-            position: 'fixed',
-            width: '8px',
-            height: '8px',
-            background: colors[Math.floor(Math.random() * colors.length)],
-            borderRadius: Math.random() > 0.5 ? '50%' : '2px',
-            left: (40 + Math.random() * 20) + '%',
-            top: '-10px',
-            zIndex: '9998',
-            pointerEvents: 'none',
-            opacity: '1',
-            transition: `all ${0.8 + Math.random() * 1.2}s cubic-bezier(0.25, 0.46, 0.45, 0.94)`,
-        });
-        container.appendChild(confetti);
-        requestAnimationFrame(() => {
-            confetti.style.left = (10 + Math.random() * 80) + '%';
-            confetti.style.top = (60 + Math.random() * 40) + '%';
-            confetti.style.opacity = '0';
-            confetti.style.transform = `rotate(${Math.random() * 720}deg) scale(0.3)`;
-        });
-        setTimeout(() => confetti.remove(), 2200);
+// ── Interactive Satisfying Feedback (Confetti & Chimes) ──
+function playSuccessSound() {
+    try {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContext) return;
+        const ctx = new AudioContext();
+        
+        // 1st note - high pure bell chime
+        const osc1 = ctx.createOscillator();
+        const gain1 = ctx.createGain();
+        osc1.type = 'sine';
+        osc1.frequency.setValueAtTime(880, ctx.currentTime); // A5
+        osc1.frequency.exponentialRampToValueAtTime(1320, ctx.currentTime + 0.12); // E6 chime slide
+        gain1.gain.setValueAtTime(0.08, ctx.currentTime);
+        gain1.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.5);
+        osc1.connect(gain1);
+        gain1.connect(ctx.destination);
+        
+        // 2nd note - sweet warm harmonic helper
+        const osc2 = ctx.createOscillator();
+        const gain2 = ctx.createGain();
+        osc2.type = 'triangle';
+        osc2.frequency.setValueAtTime(1108.73, ctx.currentTime); // C#6 harmony
+        gain2.gain.setValueAtTime(0.04, ctx.currentTime);
+        gain2.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.45);
+        osc2.connect(gain2);
+        gain2.connect(ctx.destination);
+        
+        osc1.start();
+        osc2.start();
+        osc1.stop(ctx.currentTime + 0.5);
+        osc2.stop(ctx.currentTime + 0.45);
+    } catch (e) {
+        console.warn('Audio synthesis bypassed:', e);
     }
+}
+
+function fireConfetti() {
+    // Play the satisfying completed chime sound!
+    playSuccessSound();
+
+    // Create high performance Canvas particle overlay
+    const canvas = document.createElement('canvas');
+    canvas.style.position = 'fixed';
+    canvas.style.top = '0';
+    canvas.style.left = '0';
+    canvas.style.width = '100vw';
+    canvas.style.height = '100vh';
+    canvas.style.pointerEvents = 'none';
+    canvas.style.zIndex = '99999';
+    document.body.appendChild(canvas);
+
+    const ctx = canvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = window.innerWidth * dpr;
+    canvas.height = window.innerHeight * dpr;
+    ctx.scale(dpr, dpr);
+
+    const particles = [];
+    const colors = ['#6366f1', '#a855f7', '#10b981', '#3b82f6', '#ec4899', '#f59e0b', '#06b6d4'];
+    
+    // Radiate from mouse coordinates or center of screen
+    const startX = lastClickX || window.innerWidth / 2;
+    const startY = lastClickY || window.innerHeight / 2;
+
+    // Spawn 55 dynamic particles
+    for (let i = 0; i < 55; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = Math.random() * 9 + 4; // premium velocity spread
+        particles.push({
+            x: startX,
+            y: startY,
+            radius: Math.random() * 4 + 2,
+            width: Math.random() * 9 + 5,
+            height: Math.random() * 5 + 3,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed - 2, // upward burst bias
+            rotation: Math.random() * Math.PI * 2,
+            rotationSpeed: (Math.random() - 0.5) * 0.25,
+            opacity: 1,
+            decay: Math.random() * 0.016 + 0.012,
+            gravity: 0.16,
+            shape: Math.random() > 0.4 ? 'circle' : 'rect'
+        });
+    }
+
+    function animate() {
+        ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+        let active = false;
+
+        particles.forEach(p => {
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vy += p.gravity;
+            p.rotation += p.rotationSpeed;
+            p.opacity -= p.decay;
+
+            if (p.opacity > 0) {
+                active = true;
+                ctx.save();
+                ctx.globalAlpha = p.opacity;
+                ctx.fillStyle = p.color;
+                ctx.translate(p.x, p.y);
+                ctx.rotate(p.rotation);
+
+                // Add premium glowing shadow effect
+                ctx.shadowBlur = 8;
+                ctx.shadowColor = p.color;
+
+                ctx.beginPath();
+                if (p.shape === 'circle') {
+                    ctx.arc(0, 0, p.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                } else {
+                    ctx.fillRect(-p.width / 2, -p.height / 2, p.width, p.height);
+                }
+                ctx.restore();
+            }
+        });
+
+        if (active) {
+            requestAnimationFrame(animate);
+        } else {
+            canvas.remove();
+        }
+    }
+    animate();
 }
 
 async function compressImage(file, maxWidth = 1200, maxHeight = 1200, quality = 0.7) {
@@ -200,6 +299,13 @@ function initPickers() {
 
 // ── Init ───────────────────────────────────────────────
 let loginPasswordHash = null; // The app login password hash from Supabase
+let lastClickX = window.innerWidth / 2;
+let lastClickY = window.innerHeight / 2;
+
+window.addEventListener('click', (e) => {
+    lastClickX = e.clientX;
+    lastClickY = e.clientY;
+});
 
 function isSessionValid() {
     const authSession = sessionStorage.getItem('tp_authenticated') === 'true';
