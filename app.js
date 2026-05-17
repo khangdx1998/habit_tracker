@@ -203,8 +203,8 @@ let loginPasswordHash = null; // The app login password hash from Supabase
 
 document.addEventListener('DOMContentLoaded', async () => {
     initPickers();
-    // Check if already authenticated this session
-    if (sessionStorage.getItem('tp_authenticated') === 'true') {
+    // Check if already authenticated this session or remembered via localStorage
+    if (sessionStorage.getItem('tp_authenticated') === 'true' || localStorage.getItem('tp_authenticated') === 'true') {
         await bootApp();
         return;
     }
@@ -322,7 +322,12 @@ async function handleLogin(e) {
         }
 
         // Success — mark session as authenticated
-        sessionStorage.setItem('tp_authenticated', 'true');
+        const remember = document.getElementById('loginRemember').checked;
+        if (remember) {
+            localStorage.setItem('tp_authenticated', 'true');
+        } else {
+            sessionStorage.setItem('tp_authenticated', 'true');
+        }
 
         // Animate out login screen
         const loginScreen = document.getElementById('loginScreen');
@@ -2235,3 +2240,13 @@ selectHabit = function(id) {
     }
     _originalSelectHabit(id);
 };
+
+function logout() {
+    sessionStorage.removeItem('tp_authenticated');
+    localStorage.removeItem('tp_authenticated');
+    showToast('🔒 Signed out successfully');
+    setTimeout(() => {
+        window.location.reload();
+    }, 800);
+}
+

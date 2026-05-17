@@ -964,6 +964,30 @@ th:hover { color: var(--text); }
     letter-spacing: 0.5px;
 }
 
+.login-remember {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 1.5rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--dim);
+    cursor: pointer;
+    user-select: none;
+    transition: color 0.2s;
+}
+
+.login-remember:hover {
+    color: var(--text);
+}
+
+.login-remember input {
+    cursor: pointer;
+    accent-color: var(--accent);
+    width: 15px;
+    height: 15px;
+}
+
 .login-screen.hiding {
     animation: loginFadeOut 0.5s ease-in forwards;
 }
