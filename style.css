@@ -112,7 +112,7 @@ body {
 }
 
 /* ── Habit Nav ─────────────────────────────────────────── */
-.habit-nav { display: flex; flex-direction: column; gap: 2px; padding: 0 0.5rem; overflow-y: auto; }
+.habit-nav { display: flex; flex-direction: column; gap: 2px; padding: 0 0.5rem; }
 #habitNav { flex: 1; }
 .habit-nav-item {
     display: flex;
@@ -648,8 +648,10 @@ th:hover { color: var(--text); }
 }
 
 .group-items-container {
-    transition: all 0.3s ease;
+    max-height: 1000px;
+    transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
     overflow: hidden;
+    opacity: 1;
 }
 
 .group-items-container.collapsed {
