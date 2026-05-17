@@ -201,10 +201,32 @@ function initPickers() {
 // ── Init ───────────────────────────────────────────────
 let loginPasswordHash = null; // The app login password hash from Supabase
 
+function isSessionValid() {
+    const authSession = sessionStorage.getItem('tp_authenticated') === 'true';
+    const authLocal = localStorage.getItem('tp_authenticated') === 'true';
+    if (!authSession && !authLocal) return false;
+
+    const storedTimeStr = sessionStorage.getItem('tp_auth_time') || localStorage.getItem('tp_auth_time');
+    if (!storedTimeStr) return false;
+
+    const storedTime = parseInt(storedTimeStr, 10);
+    const oneDayMs = 24 * 60 * 60 * 1000;
+
+    if (Date.now() - storedTime > oneDayMs) {
+        // Expired! Clear storage
+        sessionStorage.removeItem('tp_authenticated');
+        sessionStorage.removeItem('tp_auth_time');
+        localStorage.removeItem('tp_authenticated');
+        localStorage.removeItem('tp_auth_time');
+        return false;
+    }
+    return true;
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
     initPickers();
-    // Check if already authenticated this session or remembered via localStorage
-    if (sessionStorage.getItem('tp_authenticated') === 'true' || localStorage.getItem('tp_authenticated') === 'true') {
+    // Check if already authenticated and session is still valid (less than 1 day old)
+    if (isSessionValid()) {
         await bootApp();
         return;
     }
@@ -321,12 +343,15 @@ async function handleLogin(e) {
             }
         }
 
-        // Success — mark session as authenticated
+        // Success — mark session as authenticated and store timestamp
         const remember = document.getElementById('loginRemember').checked;
+        const now = Date.now().toString();
         if (remember) {
             localStorage.setItem('tp_authenticated', 'true');
+            localStorage.setItem('tp_auth_time', now);
         } else {
             sessionStorage.setItem('tp_authenticated', 'true');
+            sessionStorage.setItem('tp_auth_time', now);
         }
 
         // Animate out login screen
@@ -2243,7 +2268,9 @@ selectHabit = function(id) {
 
 function logout() {
     sessionStorage.removeItem('tp_authenticated');
+    sessionStorage.removeItem('tp_auth_time');
     localStorage.removeItem('tp_authenticated');
+    localStorage.removeItem('tp_auth_time');
     showToast('🔒 Signed out successfully');
     setTimeout(() => {
         window.location.reload();
