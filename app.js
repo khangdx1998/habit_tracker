@@ -203,6 +203,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     showLoading();
     initPickers();
     await loadData();
+    await loadPrivatePasswordHash();
     hideLoading();
     renderSidebar();
     renderSidebarTags();
@@ -1953,6 +1954,8 @@ async function handleDeleteTemplate(id) {
 }
 
 // ── Private Habits — Password Protection ─────────────────
+let privatePasswordHash = null; // Loaded from Supabase on startup
+
 async function hashPassword(password) {
     const encoder = new TextEncoder();
     const data = encoder.encode(password + '_trackpro_salt_2026');
@@ -1961,8 +1964,45 @@ async function hashPassword(password) {
     return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
+async function loadPrivatePasswordHash() {
+    try {
+        const { data, error } = await sbClient
+            .from('app_settings')
+            .select('value')
+            .eq('key', 'private_password_hash')
+            .maybeSingle();
+        if (!error && data) {
+            privatePasswordHash = data.value;
+        }
+    } catch (e) {
+        console.warn('Could not load private password from cloud:', e);
+    }
+}
+
+async function savePrivatePasswordHash(hash) {
+    privatePasswordHash = hash;
+    try {
+        const { data: existing } = await sbClient
+            .from('app_settings')
+            .select('key')
+            .eq('key', 'private_password_hash')
+            .maybeSingle();
+
+        if (existing) {
+            await sbClient.from('app_settings')
+                .update({ value: hash })
+                .eq('key', 'private_password_hash');
+        } else {
+            await sbClient.from('app_settings')
+                .insert({ key: 'private_password_hash', value: hash });
+        }
+    } catch (e) {
+        console.error('Failed to save password to cloud:', e);
+    }
+}
+
 function hasPrivatePassword() {
-    return !!localStorage.getItem('tp_private_hash');
+    return !!privatePasswordHash;
 }
 
 function togglePrivateHabits() {
@@ -2019,7 +2059,7 @@ async function handlePrivatePassword(e) {
             return;
         }
         const hash = await hashPassword(password);
-        localStorage.setItem('tp_private_hash', hash);
+        await savePrivatePasswordHash(hash);
         privateHabitsUnlocked = true;
         closeModal('privatePasswordModal');
         renderSidebar();
@@ -2027,8 +2067,7 @@ async function handlePrivatePassword(e) {
         showToast('🔓 Password set & private habits unlocked!');
     } else {
         const hash = await hashPassword(password);
-        const stored = localStorage.getItem('tp_private_hash');
-        if (hash === stored) {
+        if (hash === privatePasswordHash) {
             privateHabitsUnlocked = true;
             closeModal('privatePasswordModal');
             renderSidebar();
