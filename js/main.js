@@ -91,7 +91,7 @@ function isSessionValid() {
     return true;
 }
 
-document.addEventListener('DOMContentLoaded', async () => {
+async function initApp() {
     initTheme();
     initPickers();
     
@@ -104,7 +104,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Load login settings from cloud
     await loadLoginPasswordHash();
     setupLoginScreen();
-});
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initApp);
+} else {
+    initApp();
+}
 
 async function loadPrivatePasswordHash() {
     try {
