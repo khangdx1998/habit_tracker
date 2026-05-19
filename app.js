@@ -567,25 +567,16 @@ function renderSidebar() {
 }
 
 function renderHabitItems(list, isArchived = false) {
-    const todayStr = fmtDate(new Date());
     return list.map(h => {
         const count = sessions.filter(s => s.habitId === h.id && s.status === 'Approved').length;
-        const isDoneToday = sessions.some(s => s.habitId === h.id && s.date === todayStr && !s.is_deleted);
-        
         return `<div class="habit-nav-item ${activeHabit === h.id ? 'active' : ''}" onclick="selectHabit('${h.id}')" style="${isArchived ? 'opacity: 0.6' : ''}">
             <span class="habit-nav-icon" style="${isArchived ? 'filter: grayscale(1)' : ''}">${h.icon}</span>
             <div class="habit-nav-info">
-                <span class="habit-nav-name" style="display:flex; align-items:center; gap:4px;">
-                    ${h.name}
-                    ${h.is_private ? ' <span style="font-size:0.6rem; opacity:0.5;" title="Private">🔒</span>' : ''}
-                </span>
+                <span class="habit-nav-name">${h.name}${h.is_private ? ' <span style="font-size:0.6rem; opacity:0.5;" title="Private">🔒</span>' : ''}</span>
                 <span class="habit-nav-count">${count} sessions</span>
             </div>
             <div class="habit-nav-actions">
-                ${!isArchived ? (isDoneToday 
-                    ? `<span style="color:var(--green); font-size:1.1rem; font-weight:900; margin-right:6px; filter:drop-shadow(0 0 4px rgba(34,197,94,0.45));" title="Done Today">✓</span>`
-                    : `<button class="quick-log-btn" onclick="event.stopPropagation(); quickLog('${h.id}')" title="Quick Log Today">+</button>`
-                ) : ''}
+                <button class="quick-log-btn" onclick="event.stopPropagation(); quickLog('${h.id}')" title="Quick Log Today">+</button>
                 <span class="edit-icon" onclick="event.stopPropagation(); openEditHabit('${h.id}')">⚙</span>
             </div>
         </div>`;
@@ -929,10 +920,6 @@ function renderHabitCard(h, startOfWeek) {
     const totalDaysLogged = new Set(ss.map(s => s.date)).size;
     const progressPct = Math.min((totalDaysLogged / target) * 100, 100);
 
-    // Done today check (Approved or Draft)
-    const todayStr = fmtDate(new Date());
-    const isDoneToday = sessions.some(s => s.habitId === h.id && s.date === todayStr && !s.is_deleted);
-
     // Priority Styling
     const isHigh = h.priority === 'high';
     const priorityBorder = isHigh ? 'border: 1px solid rgba(251, 191, 36, 0.3); box-shadow: 0 4px 20px rgba(0,0,0,0.3); transform: translateY(-1px);' : 'border: 1px solid var(--border);';
@@ -958,18 +945,9 @@ function renderHabitCard(h, startOfWeek) {
         sparklineHTML += `<div style="width:12px; height:12px; border-radius:3px; background:${done ? h.color : 'rgba(255,255,255,0.06)'}; box-shadow: ${done ? `0 0 8px ${h.color}40` : 'none'};" title="${ds}"></div>`;
     }
 
-    // Status Badge & Complete Action Button
-    const statusBadge = isDoneToday
-        ? `<span style="font-size:0.6rem; color:var(--green); background:var(--green-glow); border:1px solid rgba(34,197,94,0.25); padding:2px 6px; border-radius:4px; font-weight:800; text-transform:uppercase; letter-spacing:0.5px; display:inline-flex; align-items:center; gap:2px;"><span style="font-size:0.75rem;">✓</span> Done</span>`
-        : `<span style="font-size:0.6rem; color:var(--dim); background:rgba(255,255,255,0.05); border:1px solid var(--border); padding:2px 6px; border-radius:4px; font-weight:800; text-transform:uppercase; letter-spacing:0.5px; display:inline-flex; align-items:center; gap:2px;"><span style="font-size:0.75rem;">○</span> Not Done</span>`;
-
-    const completeAction = !isDoneToday
-        ? `<button onclick="event.stopPropagation(); quickLog('${h.id}')" style="font-size:0.65rem; font-weight:800; padding:4px 10px; border-radius:6px; background:linear-gradient(135deg, #6366f1, #8b5cf6); color:white; border:none; cursor:pointer; box-shadow:0 3px 8px rgba(99,102,241,0.25); transition:all 0.2s; display:inline-flex; align-items:center; gap:4px; margin-top:2px;">✓ Complete</button>`
-        : `<span style="font-size:0.65rem; font-weight:700; color:var(--green); display:inline-flex; align-items:center; gap:4px; filter:drop-shadow(0 0 4px rgba(34,197,94,0.3));">✨ Done today</span>`;
-
     return `
         <div class="stat-card dashboard-habit-card ${isHigh ? 'priority-high' : ''}" onclick="selectHabit('${h.id}')" 
-             style="cursor:pointer; transition:all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); padding:1rem; display:flex; flex-direction:column; gap:10px; min-height:140px; position:relative; overflow:hidden; background: var(--bg-sidebar); ${priorityBorder}">
+             style="cursor:pointer; transition:all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); padding:1rem; display:flex; flex-direction:column; gap:10px; min-height:130px; position:relative; overflow:hidden; background: var(--bg-sidebar); ${priorityBorder}">
             
             ${isHigh ? `<div style="position:absolute; top:0; left:0; width:100%; height:2px; background:linear-gradient(90deg, transparent, #fbbf24, transparent); opacity:0.6;"></div>` : ''}
 
@@ -986,9 +964,8 @@ function renderHabitCard(h, startOfWeek) {
                         <span>⏱️ Last: <strong style="color:var(--text);opacity:0.8">${lastText}</strong></span>
                     </div>
                 </div>
-                <div style="text-align:right; display:flex; flex-direction:column; align-items:flex-end; gap:6px; flex-shrink:0;">
-                    ${stats.current > 0 ? `<div style="font-size:0.75rem; color:var(--amber); font-weight:800; margin-bottom:2px;">🔥 ${stats.current}d</div>` : ''}
-                    ${statusBadge}
+                <div style="text-align:right;">
+                    ${stats.current > 0 ? `<div style="font-size:0.75rem; color:var(--amber); font-weight:800;">🔥 ${stats.current}d</div>` : ''}
                 </div>
             </div>
 
@@ -997,9 +974,8 @@ function renderHabitCard(h, startOfWeek) {
                     <div style="font-size:0.65rem; color:var(--dim); text-transform:uppercase; letter-spacing:0.5px; font-weight:700;">Consistency (This Week)</div>
                     <div style="display:flex; gap:4px;">${sparklineHTML}</div>
                 </div>
-                <div style="text-align:right; display:flex; flex-direction:column; align-items:flex-end; gap:4px;">
+                <div style="text-align:right;">
                     <div style="font-size:0.7rem; color:var(--dim); font-weight:700;">${totalDaysLogged} / ${target} Days</div>
-                    ${completeAction}
                 </div>
             </div>
 
@@ -1012,6 +988,7 @@ function renderHabitCard(h, startOfWeek) {
             <div style="position:absolute; top:0; right:0; width:100px; height:100px; background:${isHigh ? '#fbbf24' : h.color}; opacity:${isHigh ? '0.04' : '0.02'}; filter:blur(50px); border-radius:50%;"></div>
         </div>
     `;
+}
 
 function renderWelcome() {
     const main = document.getElementById('mainContent');
