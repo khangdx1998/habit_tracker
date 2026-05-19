@@ -971,18 +971,14 @@ function renderHabitCard(h, startOfWeek) {
         sparklineHTML += `<div style="width:12px; height:12px; border-radius:3px; background:${done ? h.color : 'rgba(255,255,255,0.06)'}; box-shadow: ${done ? `0 0 8px ${h.color}40` : 'none'};" title="${ds}"></div>`;
     }
 
-    // Status Badge & Complete Action Button
-    const statusBadge = isDoneToday
-        ? `<span style="font-size:0.6rem; color:var(--green); background:var(--green-glow); border:1px solid rgba(34,197,94,0.25); padding:2px 6px; border-radius:4px; font-weight:800; text-transform:uppercase; letter-spacing:0.5px; display:inline-flex; align-items:center; gap:2px;"><span style="font-size:0.75rem;">✓</span> Done</span>`
-        : `<span style="font-size:0.6rem; color:var(--dim); background:rgba(255,255,255,0.05); border:1px solid var(--border); padding:2px 6px; border-radius:4px; font-weight:800; text-transform:uppercase; letter-spacing:0.5px; display:inline-flex; align-items:center; gap:2px;"><span style="font-size:0.75rem;">○</span> Not Done</span>`;
-
-    const completeAction = !isDoneToday
-        ? `<button onclick="event.stopPropagation(); quickLog('${h.id}')" style="font-size:0.65rem; font-weight:800; padding:4px 10px; border-radius:6px; background:linear-gradient(135deg, #6366f1, #8b5cf6); color:white; border:none; cursor:pointer; box-shadow:0 3px 8px rgba(99,102,241,0.25); transition:all 0.2s; display:inline-flex; align-items:center; gap:4px; margin-top:2px;">✓ Complete</button>`
-        : `<span style="font-size:0.65rem; font-weight:700; color:var(--green); display:inline-flex; align-items:center; gap:4px; filter:drop-shadow(0 0 4px rgba(34,197,94,0.3));">✨ Done today</span>`;
+    // Interactive Status Badge or Complete Button
+    const statusActionHTML = isDoneToday
+        ? `<span style="font-size:0.65rem; color:var(--green); background:var(--green-glow); border:1px solid rgba(34,197,94,0.25); padding:3px 8px; border-radius:6px; font-weight:800; text-transform:uppercase; letter-spacing:0.5px; display:inline-flex; align-items:center; gap:2px; filter:drop-shadow(0 0 4px rgba(34,197,94,0.25));"><span style="font-size:0.75rem;">✓</span> Done</span>`
+        : `<button onclick="event.stopPropagation(); quickLog('${h.id}')" style="font-size:0.65rem; font-weight:800; padding:4px 10px; border-radius:6px; background:linear-gradient(135deg, #6366f1, #8b5cf6); color:white; border:none; cursor:pointer; box-shadow:0 3px 8px rgba(99,102,241,0.25); transition:all 0.2s; display:inline-flex; align-items:center; gap:4px; margin-top:2px;">✓ Complete</button>`;
 
     return `
         <div class="stat-card dashboard-habit-card ${isHigh ? 'priority-high' : ''}" onclick="selectHabit('${h.id}')" 
-             style="cursor:pointer; padding:1.2rem; display:flex; flex-direction:column; gap:12px; min-height:165px; position:relative; overflow:hidden; background: rgba(15, 23, 42, 0.55); backdrop-filter: blur(12px); border-radius: 16px; box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3); ${priorityBorder}">
+             style="cursor:pointer; padding:1.2rem; display:flex; flex-direction:column; gap:12px; min-height:140px; position:relative; overflow:hidden; background: rgba(15, 23, 42, 0.55); backdrop-filter: blur(12px); border-radius: 16px; box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3); ${priorityBorder}">
             
             ${isHigh ? `<div style="position:absolute; top:0; left:0; width:100%; height:3px; background:linear-gradient(90deg, transparent, #fbbf24, #d946ef, transparent); opacity:0.8; z-index: 2;"></div>` : ''}
 
@@ -1000,8 +996,8 @@ function renderHabitCard(h, startOfWeek) {
                     </span>
                 </div>
 
-                <div style="flex:1;">
-                    <div style="font-weight:900; font-size:1.1rem; color:var(--text); margin-bottom:4px; line-height:1.2; display:flex; align-items:center; gap:6px; letter-spacing: 0.5px;">
+                <div style="flex:1; min-width: 0;">
+                    <div style="font-weight:900; font-size:1.1rem; color:var(--text); margin-bottom:4px; line-height:1.2; display:flex; align-items:center; gap:6px; letter-spacing: 0.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${h.name}">
                         ${h.name}
                         ${isHigh ? '<span title="High Priority" style="color:#fbbf24; font-size:0.9rem; animation: starPulse 2s infinite alternate; display: inline-block;">⭐️</span>' : ''}
                     </div>
@@ -1012,12 +1008,12 @@ function renderHabitCard(h, startOfWeek) {
 
                 <div style="text-align:right; display:flex; flex-direction:column; align-items:flex-end; gap:6px; flex-shrink:0;">
                     ${stats.current > 0 ? `<div style="font-size:0.75rem; color:var(--amber); font-weight:800; animation: firePulse 1.5s infinite alternate; display: inline-block;">🔥 ${stats.current}d</div>` : ''}
-                    ${statusBadge}
+                    ${statusActionHTML}
                 </div>
             </div>
 
             <!-- Middle Row: Sparkline Weekly Consistency -->
-            <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-top:4px; position:relative; z-index:1;">
+            <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-top:auto; position:relative; z-index:1;">
                 <div style="display:flex; flex-direction:column; gap:6px;">
                     <div style="font-size:0.6rem; color:var(--dim); text-transform:uppercase; letter-spacing:1px; font-weight:800;">Consistency (This Week)</div>
                     <div style="display:flex; gap:5px;">${sparklineHTML}</div>
@@ -1026,12 +1022,6 @@ function renderHabitCard(h, startOfWeek) {
                     <div style="font-size:0.8rem; color:var(--text); font-weight:900; letter-spacing:0.5px;">${progressPct.toFixed(0)}%</div>
                     <div style="font-size:0.65rem; color:var(--dim); font-weight:700;">${totalDaysLogged} / ${target} Days</div>
                 </div>
-            </div>
-
-            <!-- Bottom Action Row -->
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:auto; position:relative; z-index:1; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.05);">
-                <span style="font-size: 0.65rem; color: var(--dim); font-weight: 700;">Goal: ${target} ${h.unit || 'sessions'}</span>
-                ${completeAction}
             </div>
 
             <!-- Premium Holographic Aurora backdrop glows -->
