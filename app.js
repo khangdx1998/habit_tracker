@@ -857,12 +857,19 @@ function renderDashboard() {
     const mediumHabits = sortedHabits.filter(h => h.priority === 'medium' || !h.priority);
     const lowHabits = sortedHabits.filter(h => h.priority === 'low');
 
+    const todayStr = fmtDate(new Date());
+    const donePriorityCount = highHabits.filter(h => sessions.some(s => s.habitId === h.id && s.date === todayStr && !s.is_deleted)).length;
+    const doneTodayCount = activeHabitsList.filter(h => sessions.some(s => s.habitId === h.id && s.date === todayStr && !s.is_deleted)).length;
+
     const sectionsHTML = [
         { title: 'Priority Focus', habits: highHabits, icon: '⭐️', color: '#fbbf24' },
         { title: 'Active Habits', habits: mediumHabits, icon: '⚡', color: 'var(--accent)' },
         { title: 'Background', habits: lowHabits, icon: '🍃', color: 'var(--dim)' }
     ].map(section => {
         if (section.habits.length === 0) return '';
+        const doneInSection = section.habits.filter(h => sessions.some(s => s.habitId === h.id && s.date === todayStr && !s.is_deleted)).length;
+        const allDone = doneInSection === section.habits.length;
+
         return `
             <div class="dashboard-section" style="margin-bottom: 3.5rem;">
                 <div style="display:flex; align-items:center; gap:15px; margin-bottom:1.5rem;">
@@ -870,7 +877,9 @@ function renderDashboard() {
                         ${section.title}
                     </h3>
                     <div style="flex:1; height:1px; background:linear-gradient(90deg, rgba(255,255,255,0.1), transparent);"></div>
-                    <span style="font-size:0.7rem; color:var(--dim); font-weight:700; background:rgba(255,255,255,0.05); padding:3px 10px; border-radius:10px;">${section.habits.length}</span>
+                    <span style="font-size:0.7rem; color:${allDone ? 'var(--green)' : 'var(--dim)'}; font-weight:700; background:${allDone ? 'var(--green-glow)' : 'rgba(255,255,255,0.05)'}; padding:3px 10px; border-radius:10px; border:1px solid ${allDone ? 'rgba(34,197,94,0.25)' : 'transparent'}; filter: ${allDone ? 'drop-shadow(0 0 4px rgba(34,197,94,0.2))' : 'none'}; transition: all 0.3s ease;">
+                        ${doneInSection}/${section.habits.length} Done
+                    </span>
                 </div>
                 <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap:1.25rem;">
                     ${section.habits.map(h => renderHabitCard(h, startOfWeek)).join('')}
@@ -891,7 +900,7 @@ function renderDashboard() {
         </div>
 
         <!-- Horizontal Stats & Quote Bar -->
-        <div style="display:grid; grid-template-columns: 1.5fr 1fr; gap:2rem; margin-bottom: 3.5rem; background:rgba(255,255,255,0.02); padding:1.5rem; border-radius:16px; border:1px solid var(--border);">
+        <div style="display:grid; grid-template-columns: 1.3fr 1.2fr; gap:2rem; margin-bottom: 3.5rem; background:rgba(255,255,255,0.02); padding:1.5rem; border-radius:16px; border:1px solid var(--border);">
             <div style="border-right: 1px solid rgba(255,255,255,0.05); padding-right: 2rem; display:flex; flex-direction:column; justify-content:center;">
                 <div style="font-size: 0.65rem; text-transform: uppercase; letter-spacing: 1.5px; color: var(--dim); margin-bottom: 0.8rem; font-weight: 800;">Daily Inspiration</div>
                 <div style="font-size: 1rem; color: var(--text); line-height: 1.6; font-style: italic; opacity: 0.9;">
@@ -899,18 +908,22 @@ function renderDashboard() {
                     <span style="font-size: 0.75rem; font-style: normal; opacity: 0.5; margin-left: 10px;">— ${quote.author}</span>
                 </div>
             </div>
-            <div style="display:flex; justify-content:space-around; align-items:center;">
+            <div style="display:flex; justify-content:space-around; align-items:center; gap:10px; width:100%;">
                 <div style="text-align:center;">
-                    <div style="font-size: 1.5rem; font-weight: 900; color: var(--accent);">${activeHabitsList.length}</div>
-                    <div style="font-size: 0.6rem; color: var(--dim); text-transform: uppercase; letter-spacing: 1px; font-weight:700;">Habits</div>
+                    <div style="font-size: 1.4rem; font-weight: 900; color: var(--accent);">${activeHabitsList.length}</div>
+                    <div style="font-size: 0.58rem; color: var(--dim); text-transform: uppercase; letter-spacing: 1px; font-weight:700;">Habits</div>
                 </div>
                 <div style="text-align:center;">
-                    <div style="font-size: 1.5rem; font-weight: 900; color: var(--green);">${totalSessionsThisWeek}</div>
-                    <div style="font-size: 0.6rem; color: var(--dim); text-transform: uppercase; letter-spacing: 1px; font-weight:700;">Weekly</div>
+                    <div style="font-size: 1.4rem; font-weight: 900; color: #fbbf24;">${donePriorityCount}/${highHabits.length || activeHabitsList.length}</div>
+                    <div style="font-size: 0.58rem; color: var(--dim); text-transform: uppercase; letter-spacing: 1px; font-weight:700;">${highHabits.length > 0 ? 'Priority Done' : 'Done Today'}</div>
                 </div>
                 <div style="text-align:center;">
-                    <div style="font-size: 1.5rem; font-weight: 900; color: var(--amber);">${totalSessionsAllTime}</div>
-                    <div style="font-size: 0.6rem; color: var(--dim); text-transform: uppercase; letter-spacing: 1px; font-weight:700;">Total</div>
+                    <div style="font-size: 1.4rem; font-weight: 900; color: var(--green);">${totalSessionsThisWeek}</div>
+                    <div style="font-size: 0.58rem; color: var(--dim); text-transform: uppercase; letter-spacing: 1px; font-weight:700;">Weekly</div>
+                </div>
+                <div style="text-align:center;">
+                    <div style="font-size: 1.4rem; font-weight: 900; color: var(--amber);">${totalSessionsAllTime}</div>
+                    <div style="font-size: 0.58rem; color: var(--dim); text-transform: uppercase; letter-spacing: 1px; font-weight:700;">Total</div>
                 </div>
             </div>
         </div>
