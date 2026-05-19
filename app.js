@@ -971,57 +971,62 @@ function renderHabitCard(h, startOfWeek) {
         sparklineHTML += `<div style="width:12px; height:12px; border-radius:3px; background:${done ? h.color : 'rgba(255,255,255,0.06)'}; box-shadow: ${done ? `0 0 8px ${h.color}40` : 'none'};" title="${ds}"></div>`;
     }
 
-    // Interactive Status Badge or Complete Button
-    const statusActionHTML = isDoneToday
-        ? `<span style="font-size:0.65rem; color:var(--green); background:var(--green-glow); border:1px solid rgba(34,197,94,0.25); padding:3px 8px; border-radius:6px; font-weight:800; text-transform:uppercase; letter-spacing:0.5px; display:inline-flex; align-items:center; gap:2px; filter:drop-shadow(0 0 4px rgba(34,197,94,0.25));"><span style="font-size:0.75rem;">✓</span> Done</span>`
-        : `<button onclick="event.stopPropagation(); quickLog('${h.id}')" style="font-size:0.65rem; font-weight:800; padding:4px 10px; border-radius:6px; background:linear-gradient(135deg, #6366f1, #8b5cf6); color:white; border:none; cursor:pointer; box-shadow:0 3px 8px rgba(99,102,241,0.25); transition:all 0.2s; display:inline-flex; align-items:center; gap:4px; margin-top:2px;">✓ Complete</button>`;
+    // Full Width Button Actions
+    const completeActionHTML = isDoneToday
+        ? `<div style="width:100%; text-align:center; font-size:0.7rem; color:var(--green); background:var(--green-glow); border:1px solid rgba(34,197,94,0.25); padding:6px 0; border-radius:8px; font-weight:800; text-transform:uppercase; letter-spacing:1px; display:flex; align-items:center; justify-content:center; gap:4px; filter:drop-shadow(0 0 4px rgba(34,197,94,0.25));">✓ Completed Today ✨</div>`
+        : `<button onclick="event.stopPropagation(); quickLog('${h.id}')" style="width:100%; font-size:0.7rem; font-weight:800; text-transform:uppercase; letter-spacing:1.1px; padding:8px 0; border-radius:8px; background:linear-gradient(135deg, #6366f1, #8b5cf6); color:white; border:none; cursor:pointer; box-shadow:0 4px 12px rgba(99,102,241,0.3); transition:all 0.2s; display:flex; align-items:center; justify-content:center; gap:4px;">✓ Complete</button>`;
 
     return `
         <div class="stat-card dashboard-habit-card ${isHigh ? 'priority-high' : ''}" onclick="selectHabit('${h.id}')" 
-             style="cursor:pointer; padding:1.2rem; display:flex; flex-direction:column; gap:12px; min-height:140px; position:relative; overflow:hidden; background: rgba(15, 23, 42, 0.55); backdrop-filter: blur(12px); border-radius: 16px; box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3); ${priorityBorder}">
+             style="cursor:pointer; padding:1.25rem; display:flex; flex-direction:column; gap:12px; min-height:220px; position:relative; overflow:hidden; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(12px); border-radius: 20px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4); ${priorityBorder}">
             
-            ${isHigh ? `<div style="position:absolute; top:0; left:0; width:100%; height:3px; background:linear-gradient(90deg, transparent, #fbbf24, #d946ef, transparent); opacity:0.8; z-index: 2;"></div>` : ''}
+            ${isHigh ? `<div style="position:absolute; top:0; left:0; width:100%; height:3px; background:linear-gradient(90deg, transparent, #fbbf24, #d946ef, transparent); opacity:0.9; z-index: 2;"></div>` : ''}
 
-            <!-- Top Row: Radial Ring Progress & Habit Info -->
-            <div style="display:flex; align-items:center; gap:14px; position:relative; z-index:1;">
+            <!-- Header Row: Radial Ring & Streaks -->
+            <div style="display:flex; justify-content:space-between; align-items:center; position:relative; z-index:1;">
                 <!-- Holographic Radial Circle -->
-                <div style="position:relative; width:52px; height:52px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
-                    <svg width="52" height="52" style="position:absolute; top:0; left:0; transform: rotate(-90deg);">
-                        <circle stroke="rgba(255,255,255,0.06)" stroke-width="3" fill="transparent" r="22" cx="26" cy="26"/>
-                        <circle stroke="${isDoneToday ? 'var(--green)' : h.color}" stroke-width="3.5" stroke-linecap="round" fill="transparent" r="22" cx="26" cy="26"
-                                style="stroke-dasharray: 138.23; stroke-dashoffset: ${138.23 - (138.23 * progressPct) / 100}; transition: stroke-dashoffset 0.8s ease-in-out; filter: drop-shadow(0 0 5px ${isDoneToday ? 'var(--green)' : h.color}aa);"/>
+                <div style="position:relative; width:48px; height:48px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                    <svg width="48" height="48" style="position:absolute; top:0; left:0; transform: rotate(-90deg);">
+                        <circle stroke="rgba(255,255,255,0.06)" stroke-width="2.5" fill="transparent" r="20" cx="24" cy="24"/>
+                        <circle stroke="${isDoneToday ? 'var(--green)' : h.color}" stroke-width="3" stroke-linecap="round" fill="transparent" r="20" cx="24" cy="24"
+                                style="stroke-dasharray: 125.66; stroke-dashoffset: ${125.66 - (125.66 * progressPct) / 100}; transition: stroke-dashoffset 0.8s ease-in-out; filter: drop-shadow(0 0 5px ${isDoneToday ? 'var(--green)' : h.color}aa);"/>
                     </svg>
-                    <span style="font-size:1.4rem; position:relative; z-index:1; filter: drop-shadow(0 0 3px rgba(255,255,255,0.2));">
+                    <span style="font-size:1.3rem; position:relative; z-index:1; filter: drop-shadow(0 0 3px rgba(255,255,255,0.2));">
                         ${isDoneToday ? '✨' : h.icon}
                     </span>
                 </div>
 
-                <div style="flex:1; min-width: 0;">
-                    <div style="font-weight:900; font-size:1.1rem; color:var(--text); margin-bottom:4px; line-height:1.2; display:flex; align-items:center; gap:6px; letter-spacing: 0.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${h.name}">
-                        ${h.name}
-                        ${isHigh ? '<span title="High Priority" style="color:#fbbf24; font-size:0.9rem; animation: starPulse 2s infinite alternate; display: inline-block;">⭐️</span>' : ''}
-                    </div>
-                    <div style="font-size:0.7rem; color:var(--dim); font-weight:600; display:flex; align-items:center; gap:5px;">
-                        <span>⏱️ Last: <strong style="color:var(--text);opacity:0.8">${lastText}</strong></span>
-                    </div>
-                </div>
-
-                <div style="text-align:right; display:flex; flex-direction:column; align-items:flex-end; gap:6px; flex-shrink:0;">
-                    ${stats.current > 0 ? `<div style="font-size:0.75rem; color:var(--amber); font-weight:800; animation: firePulse 1.5s infinite alternate; display: inline-block;">🔥 ${stats.current}d</div>` : ''}
-                    ${statusActionHTML}
+                <!-- Streaks & Priority -->
+                <div style="display:flex; align-items:center; gap:8px;">
+                    ${isHigh ? '<span title="High Priority" style="color:#fbbf24; font-size:1rem; animation: starPulse 2s infinite alternate; display: inline-block;">⭐️</span>' : ''}
+                    ${stats.current > 0 ? `<span style="font-size:0.75rem; color:var(--amber); background:rgba(245,158,11,0.1); border:1px solid rgba(245,158,11,0.2); padding:3px 8px; border-radius:12px; font-weight:800; animation: firePulse 1.5s infinite alternate; display: inline-flex; align-items:center; gap:3px;">🔥 ${stats.current}d</span>` : ''}
                 </div>
             </div>
 
-            <!-- Middle Row: Sparkline Weekly Consistency -->
-            <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-top:auto; position:relative; z-index:1;">
-                <div style="display:flex; flex-direction:column; gap:6px;">
-                    <div style="font-size:0.6rem; color:var(--dim); text-transform:uppercase; letter-spacing:1px; font-weight:800;">Consistency (This Week)</div>
+            <!-- Title & Last Logged Block -->
+            <div style="position:relative; z-index:1; margin-top:4px;">
+                <div style="font-weight:900; font-size:1.2rem; color:var(--text); line-height:1.2; letter-spacing: 0.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${h.name}">
+                    ${h.name}
+                </div>
+                <div style="font-size:0.7rem; color:var(--dim); font-weight:600; margin-top:4px; display:flex; align-items:center; gap:4px; opacity:0.8;">
+                    <span>⏱️ Last: <strong>${lastText}</strong></span>
+                </div>
+            </div>
+
+            <!-- Consistency & Progress Percentage Row -->
+            <div style="position:relative; z-index:1; margin-top:auto; display:flex; flex-direction:column; gap:6px;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span style="font-size:0.6rem; color:var(--dim); text-transform:uppercase; letter-spacing:1px; font-weight:800;">Consistency (7d)</span>
+                    <span style="font-size:0.7rem; color:var(--text); font-weight:800;">${totalDaysLogged}/${target} Days (${progressPct.toFixed(0)}%)</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center;">
                     <div style="display:flex; gap:5px;">${sparklineHTML}</div>
                 </div>
-                <div style="text-align:right; display:flex; flex-direction:column; align-items:flex-end; gap:3px;">
-                    <div style="font-size:0.8rem; color:var(--text); font-weight:900; letter-spacing:0.5px;">${progressPct.toFixed(0)}%</div>
-                    <div style="font-size:0.65rem; color:var(--dim); font-weight:700;">${totalDaysLogged} / ${target} Days</div>
-                </div>
+            </div>
+
+            <!-- Action Button: Full Width bottom block -->
+            <div style="position:relative; z-index:1; margin-top:4px; padding-top:4px;">
+                ${completeActionHTML}
             </div>
 
             <!-- Premium Holographic Aurora backdrop glows -->
