@@ -870,6 +870,16 @@ function renderDashboard() {
         const doneInSection = section.habits.filter(h => sessions.some(s => s.habitId === h.id && s.date === todayStr && s.status === 'Approved' && !s.is_deleted)).length;
         const allDone = doneInSection === section.habits.length;
 
+        // Reorder: Not Done today first, Done today last
+        const sortedSectionHabits = [...section.habits].sort((a, b) => {
+            const doneA = sessions.some(s => s.habitId === a.id && s.date === todayStr && s.status === 'Approved' && !s.is_deleted);
+            const doneB = sessions.some(s => s.habitId === b.id && s.date === todayStr && s.status === 'Approved' && !s.is_deleted);
+            if (doneA !== doneB) {
+                return doneA ? 1 : -1;
+            }
+            return 0;
+        });
+
         return `
             <div class="dashboard-section" style="margin-bottom: 3.5rem;">
                 <div style="display:flex; align-items:center; gap:15px; margin-bottom:1.5rem;">
@@ -882,7 +892,7 @@ function renderDashboard() {
                     </span>
                 </div>
                 <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap:1.25rem;">
-                    ${section.habits.map(h => renderHabitCard(h, startOfWeek)).join('')}
+                    ${sortedSectionHabits.map(h => renderHabitCard(h, startOfWeek)).join('')}
                 </div>
             </div>
         `;
@@ -978,7 +988,7 @@ function renderHabitCard(h, startOfWeek) {
 
     return `
         <div class="stat-card dashboard-habit-card ${isHigh ? 'priority-high' : ''}" onclick="selectHabit('${h.id}')" 
-             style="cursor:pointer; padding:1.25rem; display:flex; flex-direction:column; gap:12px; min-height:220px; position:relative; overflow:hidden; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(12px); border-radius: 20px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4); ${priorityBorder}">
+             style="cursor:pointer; padding:1.25rem; display:flex; flex-direction:column; gap:12px; min-height:200px; position:relative; overflow:hidden; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(12px); border-radius: 20px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4); ${priorityBorder}">
             
             ${isHigh ? `<div style="position:absolute; top:0; left:0; width:100%; height:3px; background:linear-gradient(90deg, transparent, #fbbf24, #d946ef, transparent); opacity:0.9; z-index: 2;"></div>` : ''}
 
@@ -1017,7 +1027,6 @@ function renderHabitCard(h, startOfWeek) {
             <div style="position:relative; z-index:1; margin-top:auto; display:flex; flex-direction:column; gap:6px;">
                 <div style="display:flex; justify-content:space-between; align-items:center;">
                     <span style="font-size:0.6rem; color:var(--dim); text-transform:uppercase; letter-spacing:1px; font-weight:800;">Consistency (7d)</span>
-                    <span style="font-size:0.7rem; color:var(--text); font-weight:800;">${totalDaysLogged}/${target} Days (${progressPct.toFixed(0)}%)</span>
                 </div>
                 <div style="display:flex; justify-content:space-between; align-items:center;">
                     <div style="display:flex; gap:5px;">${sparklineHTML}</div>
