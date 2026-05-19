@@ -273,9 +273,9 @@ body {
 
 /* ── Dashboard Enhancements ───────────────────────────── */
 .dashboard-habit-card:hover {
-    transform: translateY(-4px);
-    border-color: var(--border-hover);
-    background: rgba(255, 255, 255, 0.03);
+    transform: translateY(-5px) scale(1.01) !important;
+    border-color: rgba(139, 92, 246, 0.45) !important;
+    box-shadow: 0 12px 40px rgba(139, 92, 246, 0.15), inset 0 0 12px rgba(255, 255, 255, 0.05) !important;
 }
 
 .weekly-progress-bar-bg {
@@ -1003,4 +1003,15 @@ th:hover { color: var(--text); }
     .login-container { padding: 1.5rem; }
     .login-card { padding: 1.5rem; }
     .login-title { font-size: 1.6rem; }
+}
+
+/* ── Sci-Fi Aurora Glow Keyframes ────────────────────── */
+@keyframes starPulse {
+    0% { transform: scale(1); filter: drop-shadow(0 0 2px rgba(251, 191, 36, 0.4)); }
+    100% { transform: scale(1.15); filter: drop-shadow(0 0 8px rgba(251, 191, 36, 0.9)); }
+}
+
+@keyframes firePulse {
+    0% { transform: scale(1); filter: drop-shadow(0 0 2px rgba(245, 158, 11, 0.4)); }
+    100% { transform: scale(1.05); filter: drop-shadow(0 0 8px rgba(245, 158, 11, 0.8)); }
 }

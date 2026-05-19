@@ -948,7 +948,7 @@ function renderHabitCard(h, startOfWeek) {
 
     // Priority Styling
     const isHigh = h.priority === 'high';
-    const priorityBorder = isHigh ? 'border: 1px solid rgba(251, 191, 36, 0.3); box-shadow: 0 4px 20px rgba(0,0,0,0.3); transform: translateY(-1px);' : 'border: 1px solid var(--border);';
+    const priorityBorder = isHigh ? 'border: 1px solid rgba(251, 191, 36, 0.45); box-shadow: 0 8px 32px rgba(251, 191, 36, 0.08); transform: translateY(-1px);' : 'border: 1px solid rgba(255, 255, 255, 0.08);';
 
     // Last Logged Logic
     const lastSession = [...ss].sort((a, b) => b.date.localeCompare(a.date) || b.time.localeCompare(a.time))[0];
@@ -982,47 +982,61 @@ function renderHabitCard(h, startOfWeek) {
 
     return `
         <div class="stat-card dashboard-habit-card ${isHigh ? 'priority-high' : ''}" onclick="selectHabit('${h.id}')" 
-             style="cursor:pointer; transition:all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); padding:1rem; display:flex; flex-direction:column; gap:10px; min-height:140px; position:relative; overflow:hidden; background: var(--bg-sidebar); ${priorityBorder}">
+             style="cursor:pointer; padding:1.2rem; display:flex; flex-direction:column; gap:12px; min-height:165px; position:relative; overflow:hidden; background: rgba(15, 23, 42, 0.55); backdrop-filter: blur(12px); border-radius: 16px; box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3); ${priorityBorder}">
             
-            ${isHigh ? `<div style="position:absolute; top:0; left:0; width:100%; height:2px; background:linear-gradient(90deg, transparent, #fbbf24, transparent); opacity:0.6;"></div>` : ''}
+            ${isHigh ? `<div style="position:absolute; top:0; left:0; width:100%; height:3px; background:linear-gradient(90deg, transparent, #fbbf24, #d946ef, transparent); opacity:0.8; z-index: 2;"></div>` : ''}
 
-            <div style="display:flex; align-items:flex-start; gap:14px; position:relative; z-index:1;">
-                <div style="font-size:1.8rem; background:rgba(255,255,255,0.02); width:48px; height:48px; display:flex; align-items:center; justify-content:center; border-radius:10px; border:1px solid rgba(255,255,255,0.05); flex-shrink:0;">
-                    ${h.icon}
+            <!-- Top Row: Radial Ring Progress & Habit Info -->
+            <div style="display:flex; align-items:center; gap:14px; position:relative; z-index:1;">
+                <!-- Holographic Radial Circle -->
+                <div style="position:relative; width:52px; height:52px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                    <svg width="52" height="52" style="position:absolute; top:0; left:0; transform: rotate(-90deg);">
+                        <circle stroke="rgba(255,255,255,0.06)" stroke-width="3" fill="transparent" r="22" cx="26" cy="26"/>
+                        <circle stroke="${isDoneToday ? 'var(--green)' : h.color}" stroke-width="3.5" stroke-linecap="round" fill="transparent" r="22" cx="26" cy="26"
+                                style="stroke-dasharray: 138.23; stroke-dashoffset: ${138.23 - (138.23 * progressPct) / 100}; transition: stroke-dashoffset 0.8s ease-in-out; filter: drop-shadow(0 0 5px ${isDoneToday ? 'var(--green)' : h.color}aa);"/>
+                    </svg>
+                    <span style="font-size:1.4rem; position:relative; z-index:1; filter: drop-shadow(0 0 3px rgba(255,255,255,0.2));">
+                        ${isDoneToday ? '✨' : h.icon}
+                    </span>
                 </div>
+
                 <div style="flex:1;">
-                    <div style="font-weight:800; font-size:1.05rem; color:var(--text); margin-bottom:4px; line-height:1.2; display:flex; align-items:center; gap:6px;">
+                    <div style="font-weight:900; font-size:1.1rem; color:var(--text); margin-bottom:4px; line-height:1.2; display:flex; align-items:center; gap:6px; letter-spacing: 0.5px;">
                         ${h.name}
-                        ${isHigh ? '<span title="High Priority" style="color:#fbbf24; font-size:0.9rem;">⭐️</span>' : ''}
+                        ${isHigh ? '<span title="High Priority" style="color:#fbbf24; font-size:0.9rem; animation: starPulse 2s infinite alternate; display: inline-block;">⭐️</span>' : ''}
                     </div>
                     <div style="font-size:0.7rem; color:var(--dim); font-weight:600; display:flex; align-items:center; gap:5px;">
                         <span>⏱️ Last: <strong style="color:var(--text);opacity:0.8">${lastText}</strong></span>
                     </div>
                 </div>
+
                 <div style="text-align:right; display:flex; flex-direction:column; align-items:flex-end; gap:6px; flex-shrink:0;">
-                    ${stats.current > 0 ? `<div style="font-size:0.75rem; color:var(--amber); font-weight:800; margin-bottom:2px;">🔥 ${stats.current}d</div>` : ''}
+                    ${stats.current > 0 ? `<div style="font-size:0.75rem; color:var(--amber); font-weight:800; animation: firePulse 1.5s infinite alternate; display: inline-block;">🔥 ${stats.current}d</div>` : ''}
                     ${statusBadge}
                 </div>
             </div>
 
+            <!-- Middle Row: Sparkline Weekly Consistency -->
             <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-top:4px; position:relative; z-index:1;">
-                <div style="display:flex; flex-direction:column; gap:4px;">
-                    <div style="font-size:0.65rem; color:var(--dim); text-transform:uppercase; letter-spacing:0.5px; font-weight:700;">Consistency (This Week)</div>
-                    <div style="display:flex; gap:4px;">${sparklineHTML}</div>
+                <div style="display:flex; flex-direction:column; gap:6px;">
+                    <div style="font-size:0.6rem; color:var(--dim); text-transform:uppercase; letter-spacing:1px; font-weight:800;">Consistency (This Week)</div>
+                    <div style="display:flex; gap:5px;">${sparklineHTML}</div>
                 </div>
-                <div style="text-align:right; display:flex; flex-direction:column; align-items:flex-end; gap:4px;">
-                    <div style="font-size:0.7rem; color:var(--dim); font-weight:700;">${totalDaysLogged} / ${target} Days</div>
-                    ${completeAction}
-                </div>
-            </div>
-
-            <div style="margin-top:auto; position:relative; z-index:1;">
-                <div class="weekly-progress-bar-bg" style="height:8px; background:rgba(0,0,0,0.3); border-radius:20px; overflow:hidden; position:relative; border:1px solid rgba(255,255,255,0.03);">
-                    <div class="weekly-progress-bar-fill" style="height:100%; width:${progressPct}%; background:linear-gradient(90deg, ${h.color}cc, ${h.color}); border-radius:20px; transition:width 1s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 0 10px ${h.color}40;"></div>
+                <div style="text-align:right; display:flex; flex-direction:column; align-items:flex-end; gap:3px;">
+                    <div style="font-size:0.8rem; color:var(--text); font-weight:900; letter-spacing:0.5px;">${progressPct.toFixed(0)}%</div>
+                    <div style="font-size:0.65rem; color:var(--dim); font-weight:700;">${totalDaysLogged} / ${target} Days</div>
                 </div>
             </div>
 
-            <div style="position:absolute; top:0; right:0; width:100px; height:100px; background:${isHigh ? '#fbbf24' : h.color}; opacity:${isHigh ? '0.04' : '0.02'}; filter:blur(50px); border-radius:50%;"></div>
+            <!-- Bottom Action Row -->
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:auto; position:relative; z-index:1; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.05);">
+                <span style="font-size: 0.65rem; color: var(--dim); font-weight: 700;">Goal: ${target} ${h.unit || 'sessions'}</span>
+                ${completeAction}
+            </div>
+
+            <!-- Premium Holographic Aurora backdrop glows -->
+            <div style="position:absolute; top:-20px; right:-20px; width:120px; height:120px; background:radial-gradient(circle, ${isHigh ? '#fbbf24' : h.color} 0%, transparent 70%); opacity:0.12; filter:blur(30px); border-radius:50%; pointer-events:none;"></div>
+            <div style="position:absolute; bottom:-30px; left:-30px; width:100px; height:100px; background:radial-gradient(circle, #8b5cf6 0%, transparent 70%); opacity:0.08; filter:blur(25px); border-radius:50%; pointer-events:none;"></div>
         </div>
     `;
 }
