@@ -570,7 +570,7 @@ function renderHabitItems(list, isArchived = false) {
     const todayStr = fmtDate(new Date());
     return list.map(h => {
         const count = sessions.filter(s => s.habitId === h.id && s.status === 'Approved').length;
-        const isDoneToday = sessions.some(s => s.habitId === h.id && s.date === todayStr && !s.is_deleted);
+        const isDoneToday = sessions.some(s => s.habitId === h.id && s.date === todayStr && s.status === 'Approved' && !s.is_deleted);
         
         return `<div class="habit-nav-item ${activeHabit === h.id ? 'active' : ''}" onclick="selectHabit('${h.id}')" style="${isArchived ? 'opacity: 0.6' : ''}">
             <span class="habit-nav-icon" style="${isArchived ? 'filter: grayscale(1)' : ''}">${h.icon}</span>
@@ -858,8 +858,8 @@ function renderDashboard() {
     const lowHabits = sortedHabits.filter(h => h.priority === 'low');
 
     const todayStr = fmtDate(new Date());
-    const donePriorityCount = highHabits.filter(h => sessions.some(s => s.habitId === h.id && s.date === todayStr && !s.is_deleted)).length;
-    const doneTodayCount = activeHabitsList.filter(h => sessions.some(s => s.habitId === h.id && s.date === todayStr && !s.is_deleted)).length;
+    const donePriorityCount = highHabits.filter(h => sessions.some(s => s.habitId === h.id && s.date === todayStr && s.status === 'Approved' && !s.is_deleted)).length;
+    const doneTodayCount = activeHabitsList.filter(h => sessions.some(s => s.habitId === h.id && s.date === todayStr && s.status === 'Approved' && !s.is_deleted)).length;
 
     const sectionsHTML = [
         { title: 'Priority Focus', habits: highHabits, icon: '⭐️', color: '#fbbf24' },
@@ -867,7 +867,7 @@ function renderDashboard() {
         { title: 'Background', habits: lowHabits, icon: '🍃', color: 'var(--dim)' }
     ].map(section => {
         if (section.habits.length === 0) return '';
-        const doneInSection = section.habits.filter(h => sessions.some(s => s.habitId === h.id && s.date === todayStr && !s.is_deleted)).length;
+        const doneInSection = section.habits.filter(h => sessions.some(s => s.habitId === h.id && s.date === todayStr && s.status === 'Approved' && !s.is_deleted)).length;
         const allDone = doneInSection === section.habits.length;
 
         return `
@@ -944,7 +944,7 @@ function renderHabitCard(h, startOfWeek) {
 
     // Done today check (Approved or Draft)
     const todayStr = fmtDate(new Date());
-    const isDoneToday = sessions.some(s => s.habitId === h.id && s.date === todayStr && !s.is_deleted);
+    const isDoneToday = sessions.some(s => s.habitId === h.id && s.date === todayStr && s.status === 'Approved' && !s.is_deleted);
 
     // Priority Styling
     const isHigh = h.priority === 'high';
