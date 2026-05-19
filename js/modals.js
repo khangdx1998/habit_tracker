@@ -5,7 +5,7 @@ import { fmtDate, closeModal, openModal, showToast, fireConfetti, compressImage 
 import {
     renderSidebar, renderMain, renderWelcome, renderEditMilestones,
     renderEditTemplates, renderTagsDashboard, renderSidebarTags,
-    renderReflectionsDashboard, renderReflectionHistory
+    renderReflectionsDashboard, renderReflectionHistory, renderLogTemplates
 } from './components.js';
 
 export async function quickLog(habitId) {
