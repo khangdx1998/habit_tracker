@@ -861,8 +861,13 @@ function renderDashboard() {
     const donePriorityCount = highHabits.filter(h => sessions.some(s => s.habitId === h.id && s.date === todayStr && s.status === 'Approved' && !s.is_deleted)).length;
     const doneTodayCount = activeHabitsList.filter(h => sessions.some(s => s.habitId === h.id && s.date === todayStr && s.status === 'Approved' && !s.is_deleted)).length;
 
+    // Split high priority habits into incomplete and complete
+    const incompleteHighHabits = highHabits.filter(h => !sessions.some(s => s.habitId === h.id && s.date === todayStr && s.status === 'Approved' && !s.is_deleted));
+    const completeHighHabits = highHabits.filter(h => sessions.some(s => s.habitId === h.id && s.date === todayStr && s.status === 'Approved' && !s.is_deleted));
+
     const sectionsHTML = [
-        { title: 'Priority Focus', habits: highHabits, icon: '⭐️', color: '#fbbf24' },
+        { title: 'Priority Focus (Pending)', habits: incompleteHighHabits, icon: '⭐️', color: '#fbbf24' },
+        { title: 'Priority Focus (Completed)', habits: completeHighHabits, icon: '✨', color: 'var(--green)' },
         { title: 'Active Habits', habits: mediumHabits, icon: '⚡', color: 'var(--accent)' },
         { title: 'Background', habits: lowHabits, icon: '🍃', color: 'var(--dim)' }
     ].map(section => {
