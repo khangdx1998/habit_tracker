@@ -1078,7 +1078,7 @@ function renderWeeklyCalendarRow() {
         if (isToday) {
             calendarHTML += `
                 <div style="display:flex; flex-direction:column; align-items:center; position:relative;">
-                    <div style="background:linear-gradient(135deg, #8b5cf6, #6366f1); color:#fff; border-radius:12px; padding:10px 14px; min-width:54px; text-align:center; font-weight:800; box-shadow:0 8px 24px rgba(99,102,241,0.35); border:1px solid rgba(255,255,255,0.1); transform:scale(1.05);">
+                    <div class="today-pill" style="background:linear-gradient(135deg, #8b5cf6, #6366f1); color:#fff; border-radius:12px; padding:10px 14px; min-width:54px; text-align:center; font-weight:800; box-shadow:0 8px 24px rgba(99,102,241,0.35); border:1px solid rgba(255,255,255,0.1); transform:scale(1.05); transition: transform 0.2s ease;">
                         <div style="font-size:0.65rem; text-transform:uppercase; letter-spacing:0.5px; opacity:0.8;">${dayLabel}</div>
                         <div style="font-size:1.15rem; margin-top:2px;">${dayNum}</div>
                     </div>
@@ -1098,6 +1098,15 @@ function renderWeeklyCalendarRow() {
     const monthYearStr = today.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
     return `
+        <style>
+            @keyframes todayFloat {
+                0% { transform: translateY(0px) scale(1.05); }
+                100% { transform: translateY(-5px) scale(1.05); }
+            }
+            .today-pill {
+                animation: todayFloat 1.8s ease-in-out infinite alternate;
+            }
+        </style>
         <div style="background:rgba(15, 23, 42, 0.45); backdrop-filter:blur(12px); border:1px solid var(--border); border-radius:20px; padding:1.25rem 1.5rem; margin-bottom: 2rem; display:flex; flex-direction:column; gap:12px;">
             <div style="font-size:0.7rem; text-transform:uppercase; letter-spacing:2px; color:var(--dim); font-weight:800; display:flex; align-items:center; gap:6px;">
                 <span>📅</span> ${monthYearStr}
