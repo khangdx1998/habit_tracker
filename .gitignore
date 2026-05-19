@@ -10,3 +10,6 @@ generate_dummy_data.py
 
 # System files
 .DS_Store
+
+# Credentials env
+.env
