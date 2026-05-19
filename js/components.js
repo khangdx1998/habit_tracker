@@ -365,12 +365,15 @@ export function renderWeeklyCalendarRow() {
             .today-pill {
                 animation: todayFloat 1.8s ease-in-out infinite alternate;
             }
+            .no-scrollbar::-webkit-scrollbar {
+                display: none;
+            }
         </style>
         <div style="background:rgba(15, 23, 42, 0.45); backdrop-filter:blur(12px); border:1px solid var(--border); border-radius:20px; padding:1.25rem 1.5rem; margin-bottom: 2rem; display:flex; flex-direction:column; gap:12px;">
             <div style="font-size:0.7rem; text-transform:uppercase; letter-spacing:2px; color:var(--dim); font-weight:800; display:flex; align-items:center; gap:6px;">
                 <span>📅</span> ${monthYearStr}
             </div>
-            <div style="display:flex; justify-content:space-between; align-items:center; width:100%; gap:8px; overflow-x:auto; padding-bottom:4px;">
+            <div class="no-scrollbar" style="display:flex; justify-content:space-between; align-items:center; width:100%; gap:8px; overflow-x:auto; overflow-y:hidden; padding-bottom:4px; -ms-overflow-style:none; scrollbar-width:none;">
                 ${calendarHTML}
             </div>
         </div>
