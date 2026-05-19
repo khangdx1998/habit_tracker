@@ -914,6 +914,9 @@ function renderDashboard() {
             </div>
         </div>
 
+        <!-- Weekly Calendar Row -->
+        ${renderWeeklyCalendarRow()}
+
         <!-- Horizontal Stats & Quote Bar -->
         <div style="display:grid; grid-template-columns: 1.3fr 1.2fr; gap:2rem; margin-bottom: 3.5rem; background:rgba(255,255,255,0.02); padding:1.5rem; border-radius:16px; border:1px solid var(--border);">
             <div style="border-right: 1px solid rgba(255,255,255,0.05); padding-right: 2rem; display:flex; flex-direction:column; justify-content:center;">
@@ -1046,6 +1049,62 @@ function renderHabitCard(h, startOfWeek) {
             <!-- Premium Holographic Aurora backdrop glows -->
             <div style="position:absolute; top:-20px; right:-20px; width:120px; height:120px; background:radial-gradient(circle, ${isHigh ? '#fbbf24' : h.color} 0%, transparent 70%); opacity:0.12; filter:blur(30px); border-radius:50%; pointer-events:none;"></div>
             <div style="position:absolute; bottom:-30px; left:-30px; width:100px; height:100px; background:radial-gradient(circle, #8b5cf6 0%, transparent 70%); opacity:0.08; filter:blur(25px); border-radius:50%; pointer-events:none;"></div>
+        </div>
+    `;
+}
+
+function renderWeeklyCalendarRow() {
+    const today = new Date();
+    const todayStr = fmtDate(today);
+    
+    // Find the Monday of the current week
+    const dow = today.getDay();
+    const off = dow === 0 ? 6 : dow - 1; // 0 for Mon, 6 for Sun
+    const startOfWeek = new Date(today);
+    startOfWeek.setDate(today.getDate() - off);
+    startOfWeek.setHours(0,0,0,0);
+
+    const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    let calendarHTML = '';
+
+    for (let i = 0; i < 7; i++) {
+        const d = new Date(startOfWeek);
+        d.setDate(startOfWeek.getDate() + i);
+        const dStr = fmtDate(d);
+        const isToday = dStr === todayStr;
+        const dayLabel = dayLabels[i];
+        const dayNum = d.getDate();
+
+        if (isToday) {
+            calendarHTML += `
+                <div style="display:flex; flex-direction:column; align-items:center; position:relative;">
+                    <div style="background:linear-gradient(135deg, #8b5cf6, #6366f1); color:#fff; border-radius:12px; padding:10px 14px; min-width:54px; text-align:center; font-weight:800; box-shadow:0 8px 24px rgba(99,102,241,0.35); border:1px solid rgba(255,255,255,0.1); transform:scale(1.05);">
+                        <div style="font-size:0.65rem; text-transform:uppercase; letter-spacing:0.5px; opacity:0.8;">${dayLabel}</div>
+                        <div style="font-size:1.15rem; margin-top:2px;">${dayNum}</div>
+                    </div>
+                    <div style="width:5px; height:5px; border-radius:50%; background:#d946ef; position:absolute; bottom:-10px; left:50%; transform:translateX(-50%); box-shadow:0 0 8px #d946ef, 0 0 15px #d946ef;"></div>
+                </div>
+            `;
+        } else {
+            calendarHTML += `
+                <div style="display:flex; flex-direction:column; align-items:center; padding:10px 14px; min-width:54px; text-align:center; color:var(--dim); opacity:0.75; font-weight:700;">
+                    <div style="font-size:0.65rem; text-transform:uppercase; letter-spacing:0.5px;">${dayLabel}</div>
+                    <div style="font-size:1.15rem; margin-top:2px; color:rgba(255,255,255,0.85);">${dayNum}</div>
+                </div>
+            `;
+        }
+    }
+
+    const monthYearStr = today.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+    return `
+        <div style="background:rgba(15, 23, 42, 0.45); backdrop-filter:blur(12px); border:1px solid var(--border); border-radius:20px; padding:1.25rem 1.5rem; margin-bottom: 2rem; display:flex; flex-direction:column; gap:12px;">
+            <div style="font-size:0.7rem; text-transform:uppercase; letter-spacing:2px; color:var(--dim); font-weight:800; display:flex; align-items:center; gap:6px;">
+                <span>📅</span> ${monthYearStr}
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center; width:100%; gap:8px; overflow-x:auto; padding-bottom:4px;">
+                ${calendarHTML}
+            </div>
         </div>
     `;
 }
