@@ -69,8 +69,8 @@ export function renderSidebar() {
 export function renderHabitItems(list, isArchived = false) {
     const todayStr = fmtDate(new Date());
     return list.map(h => {
-        const count = state.sessions.filter(s => s.habitId === h.id && s.status === 'Approved').length;
-        const isDoneToday = state.sessions.some(s => s.habitId === h.id && s.date === todayStr && s.status === 'Approved' && !s.is_deleted);
+        const count = state.sessions.filter(s => s.habitId === h.id && (s.status === 'Approved' || s.status === 'Draft')).length;
+        const isDoneToday = state.sessions.some(s => s.habitId === h.id && s.date === todayStr && (s.status === 'Approved' || s.status === 'Draft') && !s.is_deleted);
         
         return `<div class="habit-nav-item ${state.activeHabit === h.id ? 'active' : ''}" onclick="selectHabit('${h.id}')" style="${isArchived ? 'opacity: 0.6' : ''}">
             <span class="habit-nav-icon" style="${isArchived ? 'filter: grayscale(1)' : ''}">${h.icon}</span>
@@ -133,10 +133,10 @@ export function renderDashboard() {
     const lowHabits = sortedHabits.filter(h => h.priority === 'low');
 
     const todayStr = fmtDate(new Date());
-    const donePriorityCount = highHabits.filter(h => state.sessions.some(s => s.habitId === h.id && s.date === todayStr && s.status === 'Approved' && !s.is_deleted)).length;
+    const donePriorityCount = highHabits.filter(h => state.sessions.some(s => s.habitId === h.id && s.date === todayStr && (s.status === 'Approved' || s.status === 'Draft') && !s.is_deleted)).length;
 
-    const incompleteHighHabits = highHabits.filter(h => !state.sessions.some(s => s.habitId === h.id && s.date === todayStr && s.status === 'Approved' && !s.is_deleted));
-    const completeHighHabits = highHabits.filter(h => state.sessions.some(s => s.habitId === h.id && s.date === todayStr && s.status === 'Approved' && !s.is_deleted));
+    const incompleteHighHabits = highHabits.filter(h => !state.sessions.some(s => s.habitId === h.id && s.date === todayStr && (s.status === 'Approved' || s.status === 'Draft') && !s.is_deleted));
+    const completeHighHabits = highHabits.filter(h => state.sessions.some(s => s.habitId === h.id && s.date === todayStr && (s.status === 'Approved' || s.status === 'Draft') && !s.is_deleted));
 
     const sectionsHTML = [
         { title: '🔥 Priority Focus', habits: incompleteHighHabits, icon: '⭐️', color: '#fbbf24' },
@@ -145,12 +145,12 @@ export function renderDashboard() {
         { title: 'Background', habits: lowHabits, icon: '🍃', color: 'var(--dim)' }
     ].map(section => {
         if (section.habits.length === 0) return '';
-        const doneInSection = section.habits.filter(h => state.sessions.some(s => s.habitId === h.id && s.date === todayStr && s.status === 'Approved' && !s.is_deleted)).length;
+        const doneInSection = section.habits.filter(h => state.sessions.some(s => s.habitId === h.id && s.date === todayStr && (s.status === 'Approved' || s.status === 'Draft') && !s.is_deleted)).length;
         const allDone = doneInSection === section.habits.length;
 
         const sortedSectionHabits = [...section.habits].sort((a, b) => {
-            const doneA = state.sessions.some(s => s.habitId === a.id && s.date === todayStr && s.status === 'Approved' && !s.is_deleted);
-            const doneB = state.sessions.some(s => s.habitId === b.id && s.date === todayStr && s.status === 'Approved' && !s.is_deleted);
+            const doneA = state.sessions.some(s => s.habitId === a.id && s.date === todayStr && (s.status === 'Approved' || s.status === 'Draft') && !s.is_deleted);
+            const doneB = state.sessions.some(s => s.habitId === b.id && s.date === todayStr && (s.status === 'Approved' || s.status === 'Draft') && !s.is_deleted);
             if (doneA !== doneB) {
                 return doneA ? 1 : -1;
             }
@@ -225,7 +225,7 @@ export function renderDashboard() {
 }
 
 export function renderHabitCard(h, startOfWeek) {
-    const ss = state.sessions.filter(s => s.habitId === h.id && s.status === 'Approved');
+    const ss = state.sessions.filter(s => s.habitId === h.id && (s.status === 'Approved' || s.status === 'Draft'));
     const stats = computeStats(ss);
     
     const target = h.goal_target || 30;
@@ -233,7 +233,7 @@ export function renderHabitCard(h, startOfWeek) {
     const progressPct = Math.min((totalDaysLogged / target) * 100, 100);
 
     const todayStr = fmtDate(new Date());
-    const isDoneToday = state.sessions.some(s => s.habitId === h.id && s.date === todayStr && s.status === 'Approved' && !s.is_deleted);
+    const isDoneToday = state.sessions.some(s => s.habitId === h.id && s.date === todayStr && (s.status === 'Approved' || s.status === 'Draft') && !s.is_deleted);
 
     const isHigh = h.priority === 'high';
     const priorityBorder = isHigh ? 'border: 1px solid rgba(251, 191, 36, 0.45); box-shadow: 0 8px 32px rgba(251, 191, 36, 0.08); transform: translateY(-1px);' : 'border: 1px solid rgba(255, 255, 255, 0.08);';
@@ -410,7 +410,7 @@ export function renderMain() {
     }
     const h = state.habits.find(x => x.id === state.activeHabit);
     if (!h) { renderWelcome(); return; }
-    const ss = state.sessions.filter(s => s.habitId === h.id && s.status === 'Approved' && !s.is_deleted);
+    const ss = state.sessions.filter(s => s.habitId === h.id && (s.status === 'Approved' || s.status === 'Draft') && !s.is_deleted);
     const stats = computeStats(ss);
     const main = document.getElementById('mainContent');
 

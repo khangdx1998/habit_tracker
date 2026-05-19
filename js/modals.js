@@ -19,7 +19,7 @@ export async function quickLog(habitId) {
         value: null,
         notes: 'Quick log',
         time: new Date().toTimeString().substring(0, 5),
-        status: 'Approved',
+        status: 'Draft',
         is_deleted: false
     };
 
@@ -28,7 +28,7 @@ export async function quickLog(habitId) {
     renderSidebar();
     if (state.activeHabit === habitId || state.activeHabit === 'dashboard') renderMain();
     fireConfetti();
-    showToast('⚡ Quick log added');
+    showToast('⚡ Quick log added as Draft');
 
     // Background Cloud Sync
     const { error } = await sbClient.from('sessions').insert({
@@ -38,7 +38,7 @@ export async function quickLog(habitId) {
         value: null,
         notes: 'Quick log',
         time: newSession.time,
-        status: 'Approved',
+        status: 'Draft',
         is_deleted: false
     });
 
