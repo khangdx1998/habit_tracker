@@ -886,7 +886,11 @@ export async function handleReflectionSubmit(e) {
 
     const existing = state.reflections.find(r => r.date === today);
     if (existing) {
-        await sbClient.from('reflections').update({ mood, energy, journal_text: text }).eq('date', today);
+        let newText = existing.journal_text || '';
+        if (text) {
+            newText = newText ? newText + '\n\n[' + new Date().toTimeString().substring(0, 5) + '] ' + text : text;
+        }
+        await sbClient.from('reflections').update({ mood, energy, journal_text: newText }).eq('date', today);
     } else {
         await sbClient.from('reflections').insert({ id: 'r_' + Date.now(), date: today, mood, energy, journal_text: text });
     }
